@@ -1707,6 +1707,8 @@ body.focus-mode .layout{
   .btn{ width: 100%; }
   .menu__panel .btn{ width: 100%; }
   .tools{ width: 100%; justify-content: flex-start; }
+  body{ padding-bottom: 90px; }
+  .layout{ padding-bottom: calc(var(--space-5) + 90px); }
   #page-daily .panel__head .chips{ display:none; }
   .taskToggle{ font-size: 12px; }
   .calendar{ border-radius: var(--radius-md); }
@@ -1741,6 +1743,32 @@ body.focus-mode .layout{
     min-width: 0;
     padding: 10px;
   }
+
+  #page-daily > .panel:first-child{
+    padding: 12px;
+  }
+  #page-daily > .panel:first-child .muted{
+    display:none;
+  }
+  #page-daily > .panel:first-child .titleDate{
+    font-size: 18px;
+  }
+  #page-daily > .panel:first-child .tools summary{
+    width: 100%;
+    justify-content: center;
+  }
+  .dailyCapture .moodBox{
+    padding: 12px;
+    gap: 10px;
+  }
+  .moodPills{ gap: 6px; }
+  .moodPill{
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .textarea--sm{ min-height: 54px; }
+  #text.textarea{ min-height: 84px; }
+  .captureOptions{ padding: 8px 10px; }
 
   .projectsRight .form--inline-3{ grid-template-columns: 1fr; }
   .projectsRight .form--inline-3 button{ justify-self: stretch; }
