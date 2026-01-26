@@ -17,6 +17,7 @@ const el = {
   btnOnboarding: document.getElementById("btnOnboarding"),
   btnDrawer: document.getElementById("btnDrawer"),
   drawerOverlay: document.getElementById("drawerOverlay"),
+  btnDrawerClose: document.getElementById("btnDrawerClose"),
   btnLogin: document.getElementById("btnLogin"),
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
@@ -4775,6 +4776,7 @@ async function init() {
   el.btnTheme.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
   el.btnDrawer?.addEventListener("click", toggleDrawer);
   el.drawerOverlay?.addEventListener("click", closeDrawer);
+  el.btnDrawerClose?.addEventListener("click", closeDrawer);
 
   // Auth / Sync
   el.btnLogin?.addEventListener("click", openAuthDialog);
