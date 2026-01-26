@@ -15,6 +15,8 @@ const el = {
   importFile: document.getElementById("importFile"),
   btnReset: document.getElementById("btnReset"),
   btnOnboarding: document.getElementById("btnOnboarding"),
+  btnDrawer: document.getElementById("btnDrawer"),
+  drawerOverlay: document.getElementById("drawerOverlay"),
   btnLogin: document.getElementById("btnLogin"),
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
@@ -1413,6 +1415,7 @@ function sanitizeRoute(route) {
 function setRoute(route) {
   state.route = sanitizeRoute(route);
   location.hash = `#${state.route}`;
+  closeDrawer();
   renderPages();
   save();
 }
@@ -1528,6 +1531,21 @@ function setDaysView(view) {
   el.daysView.forEach(b => b.classList.toggle("is-active", b.dataset.days === view));
   save();
   renderDaysList();
+}
+
+function openDrawer() {
+  document.body.classList.add("drawer-open");
+  if (el.btnDrawer) el.btnDrawer.setAttribute("aria-expanded", "true");
+}
+
+function closeDrawer() {
+  document.body.classList.remove("drawer-open");
+  if (el.btnDrawer) el.btnDrawer.setAttribute("aria-expanded", "false");
+}
+
+function toggleDrawer() {
+  if (document.body.classList.contains("drawer-open")) closeDrawer();
+  else openDrawer();
 }
 
 function setDailyFilter(filter) {
@@ -4755,6 +4773,8 @@ async function init() {
 
   // Theme
   el.btnTheme.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
+  el.btnDrawer?.addEventListener("click", toggleDrawer);
+  el.drawerOverlay?.addEventListener("click", closeDrawer);
 
   // Auth / Sync
   el.btnLogin?.addEventListener("click", openAuthDialog);
@@ -4784,9 +4804,14 @@ async function init() {
     const next = sanitizeRoute((location.hash || "").replace("#", "") || "dashboard");
     if (next !== state.route) {
       state.route = next;
+      closeDrawer();
       renderPages();
       save();
     }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 640) closeDrawer();
   });
 
   // Sidebar nav

@@ -185,6 +185,47 @@ body{
   width: 100%;
   justify-content: center;
 }
+.btn--drawer{
+  display:none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 18px;
+}
+.drawerOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 25;
+}
+.bottomNav{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  gap: 6px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  z-index: 20;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+.bottomNav .tab{
+  white-space: nowrap;
+  scroll-snap-align: start;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.bottomNav .tab.is-active{
+  background: var(--primarySoft);
+}
 .syncStatus{
   font-size: 12px;
   font-weight: 850;
@@ -1515,6 +1556,7 @@ body.focus-mode .layout{
   .topbar__inner{ flex-wrap: wrap; align-items:flex-start; }
   .topbar__center{ order: 3; flex: 1 1 100%; }
   .topbar__actions{ order: 2; width: 100%; justify-content:flex-end; }
+  .btn--drawer{ display:inline-flex; align-items:center; justify-content:center; }
   .tabs{
     width: 100%;
     overflow-x: auto;
@@ -1552,12 +1594,49 @@ body.focus-mode .layout{
   .btn{ width: 100%; }
   .menu__panel .btn{ width: 100%; }
   .tools{ width: 100%; justify-content: flex-start; }
+  body{ padding-bottom: 70px; }
+  .bottomNav{ display:flex; }
+  .topbar__center{ display:none; }
+  .layout{ padding-bottom: calc(var(--space-5) + 70px); }
+
+  .side{
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 320px);
+    z-index: 30;
+    transform: translateX(-110%);
+    transition: transform 0.2s ease;
+    background: var(--bg);
+    padding: var(--space-3);
+    overflow-y: auto;
+  }
+  body.drawer-open .side{
+    transform: translateX(0);
+    box-shadow: 12px 0 24px rgba(0,0,0,0.25);
+  }
+  body.drawer-open .drawerOverlay{
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body.drawer-open{
+    overflow: hidden;
+  }
+
+  .calendar{ border-radius: var(--radius-md); }
+  .calendar__head > div{ padding: 8px 4px; font-size: 12px; }
+  .dayCell{ min-height: 74px; padding: 8px; }
+  .dayNum{ font-size: 13px; }
+  .miniBadge{ font-size: 11px; padding: 3px 6px; }
 
   .habitTable{ border-radius: var(--radius-md); }
   .hRow, .hHeaderRow{ grid-template-columns: 220px 1fr; min-width: 980px; }
   .hName{ padding: 10px 12px; }
   .hCells, .hDays{ min-width: 760px; }
   .hCell, .hDay{ min-width: 24px; height: 36px; }
+  .habitTable{ -webkit-overflow-scrolling: touch; }
+  .calendar__grid{ -webkit-overflow-scrolling: touch; }
 
   .projectsRight .form--inline-3{ grid-template-columns: 1fr; }
   .projectsRight .form--inline-3 button{ justify-self: stretch; }
@@ -1572,4 +1651,5 @@ body.focus-mode .layout{
   .moodRow{ grid-template-columns: 50px 1fr; }
   .moodRow__pct{ display:none; }
   .modal__card{ padding: 16px; }
+  .side{ width: min(90vw, 320px); }
 }

@@ -15,6 +15,7 @@
   <header class="topbar">
     <div class="wrap topbar__inner">
       <div class="topbar__left">
+        <button id="btnDrawer" class="btn btn--ghost btn--drawer" type="button" aria-expanded="false">☰</button>
         <div class="brand">
           <span class="brand__dot" aria-hidden="true"></span>
           <div>
@@ -65,6 +66,8 @@
       </div>
     </div>
   </header>
+
+  <div id="drawerOverlay" class="drawerOverlay"></div>
 
   <main class="wrap layout">
     <!-- SIDEBAR -->
@@ -795,6 +798,14 @@
 
     </section>
   </main>
+
+  <nav class="bottomNav" aria-label="Navigation mobile">
+    <a class="tab tab--bottom" href="#dashboard" data-route="dashboard">Dashboard</a>
+    <a class="tab tab--bottom" href="#daily" data-route="daily">Daily</a>
+    <a class="tab tab--bottom" href="#review" data-route="review">Review</a>
+    <a class="tab tab--bottom" href="#habits" data-route="habits">Habits</a>
+    <a class="tab tab--bottom" href="#projects" data-route="projects">Projets</a>
+  </nav>
 
   <dialog id="authDialog" class="modal">
     <form method="dialog" class="modal__card" id="authForm">
