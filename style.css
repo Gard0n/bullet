@@ -249,6 +249,16 @@ body{
   display:grid;
   gap: 10px;
 }
+.onboardingList{
+  display:grid;
+  gap: 8px;
+  padding-left: 18px;
+  color: var(--text);
+}
+.onboardingList li{
+  font-weight: 700;
+  line-height: 1.4;
+}
 
 /* Buttons/inputs */
 .btn{

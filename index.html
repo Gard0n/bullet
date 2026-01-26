@@ -53,6 +53,7 @@
           <summary class="btn btn--ghost">Paramètres</summary>
           <div class="menu__panel">
             <button id="btnTheme" class="btn btn--ghost" type="button" aria-pressed="false">🌙 Sombre</button>
+            <button id="btnOnboarding" class="btn btn--ghost" type="button">Guide rapide</button>
             <button id="btnExport" class="btn btn--ghost" type="button">Exporter</button>
 
             <label class="btn btn--ghost filebtn" for="importFile">Importer</label>
@@ -840,6 +841,25 @@
         <button id="syncConflictLocal" class="btn btn--primary" type="button">Garder mon local (écraser le cloud)</button>
         <button id="syncConflictCloud" class="btn btn--ghost" type="button">Charger le cloud (écraser mon local)</button>
         <button id="syncConflictCancel" class="btn btn--ghost" type="button">Annuler</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="onboardingDialog" class="modal">
+    <form method="dialog" class="modal__card">
+      <div class="modal__head">
+        <h3 class="titleSmall">Bienvenue</h3>
+        <button id="onboardingClose" class="btn btn--ghost modal__close" type="button">Fermer</button>
+      </div>
+      <p class="muted">Voici comment utiliser Bullet Journal en 3 etapes.</p>
+      <ol class="onboardingList">
+        <li>Capture tes notes, taches et evenements dans <strong>Daily</strong>.</li>
+        <li>Suivi rapide avec <strong>Dashboard</strong> + <strong>Habits</strong>.</li>
+        <li>Fais une revue hebdo dans <strong>Review</strong> pour garder le cap.</li>
+      </ol>
+      <div class="choiceActions">
+        <button id="onboardingDemo" class="btn btn--primary" type="button">Charger des donnees de demo</button>
+        <button id="onboardingStart" class="btn btn--ghost" type="button">Commencer avec une page vide</button>
       </div>
     </form>
   </dialog>

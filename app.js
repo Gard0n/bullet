@@ -14,6 +14,7 @@ const el = {
   btnExport: document.getElementById("btnExport"),
   importFile: document.getElementById("importFile"),
   btnReset: document.getElementById("btnReset"),
+  btnOnboarding: document.getElementById("btnOnboarding"),
   btnLogin: document.getElementById("btnLogin"),
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
@@ -33,6 +34,10 @@ const el = {
   syncConflictLocal: document.getElementById("syncConflictLocal"),
   syncConflictCloud: document.getElementById("syncConflictCloud"),
   syncConflictCancel: document.getElementById("syncConflictCancel"),
+  onboardingDialog: document.getElementById("onboardingDialog"),
+  onboardingDemo: document.getElementById("onboardingDemo"),
+  onboardingStart: document.getElementById("onboardingStart"),
+  onboardingClose: document.getElementById("onboardingClose"),
 
   tabs: Array.from(document.querySelectorAll(".tab")),
   pages: Array.from(document.querySelectorAll(".page")),
@@ -220,6 +225,7 @@ let state = {
   lastSyncAt: 0,
   lastRemoteAt: 0,
   syncHistory: [],
+  onboardingSeen: false,
 
   entries: [],
 
@@ -551,6 +557,17 @@ function clampWeeklyTarget(value) {
   return Math.min(7, Math.max(1, rounded));
 }
 
+function hasUserData() {
+  return (
+    state.entries.length > 0 ||
+    state.habits.length > 0 ||
+    state.projects.length > 0 ||
+    state.collections.length > 0 ||
+    state.templates.length > 0 ||
+    Object.keys(state.moods).length > 0
+  );
+}
+
 function normalizeTagsArray(tags) {
   if (!Array.isArray(tags)) return [];
   const cleaned = tags
@@ -762,6 +779,7 @@ async function load() {
     state.lastSyncAt = typeof p.lastSyncAt === "number" ? p.lastSyncAt : 0;
     state.lastRemoteAt = typeof p.lastRemoteAt === "number" ? p.lastRemoteAt : 0;
     state.syncHistory = Array.isArray(p.syncHistory) ? p.syncHistory.slice(0, 12) : [];
+    state.onboardingSeen = p.onboardingSeen === true;
 
     state.entries = Array.isArray(p.entries) ? p.entries.map(sanitizeEntry).filter(Boolean) : [];
 
@@ -947,6 +965,160 @@ function askConflictChoice() {
     dialog.showModal();
   });
   return pendingConflictChoice;
+}
+
+function openOnboarding() {
+  if (!el.onboardingDialog) return;
+  el.onboardingDialog.showModal();
+}
+
+function finishOnboarding() {
+  state.onboardingSeen = true;
+  save({ skipSync: true });
+  el.onboardingDialog?.close();
+}
+
+function applyDemoData() {
+  const now = Date.now();
+  const today = todayISO();
+  const yesterday = addDaysISO(today, -1);
+  const twoDays = addDaysISO(today, -2);
+  const mk = monthKeyFromDate(today);
+  const dayNum = String(Number(today.slice(8, 10)));
+  const yNum = String(Number(yesterday.slice(8, 10)));
+
+  const proj = {
+    id: uid("proj"),
+    name: "Refonte portfolio",
+    color: "#1f8a3b",
+    pinned: true,
+    archived: false,
+    nextActionId: "",
+    createdAt: now,
+  };
+  const habit1 = {
+    id: uid("habit"),
+    name: "Sport 2x",
+    color: "#f59e0b",
+    weeklyTarget: 2,
+    createdAt: now,
+  };
+  const habit2 = {
+    id: uid("habit"),
+    name: "Lecture",
+    color: "#2563eb",
+    weeklyTarget: 4,
+    createdAt: now,
+  };
+
+  const task1Id = uid("entry");
+  const task2Id = uid("entry");
+
+  state = {
+    theme: state.theme,
+    route: "dashboard",
+    daysView: "all",
+    dailyFilter: "all",
+    selectedDate: today,
+    query: "",
+    monthCursor: mk,
+    reviewCursor: today,
+    reviewFlow: defaultReviewFlow(),
+    viewPrefs: defaultViewPrefs(),
+    lastLocalChangeAt: now,
+    lastSyncAt: 0,
+    lastRemoteAt: 0,
+    syncHistory: [],
+    onboardingSeen: true,
+    entries: [
+      {
+        id: uid("entry"),
+        date: today,
+        kind: "note",
+        time: "08:45",
+        tags: ["#journal"],
+        text: "Matin calme, envie de prioriser la creation.",
+        projectId: "",
+        taskState: "open",
+        createdAt: now,
+      },
+      {
+        id: task1Id,
+        date: today,
+        kind: "task",
+        time: "10:00",
+        tags: ["#focus"],
+        text: "Ecrire la page d'accueil",
+        projectId: proj.id,
+        taskState: "open",
+        createdAt: now,
+      },
+      {
+        id: task2Id,
+        date: yesterday,
+        kind: "task",
+        time: "18:00",
+        tags: [],
+        text: "Configurer Github Pages",
+        projectId: proj.id,
+        taskState: "done",
+        createdAt: now - 10000,
+      },
+      {
+        id: uid("entry"),
+        date: twoDays,
+        kind: "event",
+        time: "14:00",
+        tags: ["#rdv"],
+        text: "Appel client",
+        projectId: "",
+        taskState: "open",
+        createdAt: now - 20000,
+      },
+    ],
+    templates: [
+      { id: uid("tpl"), name: "Morning", lines: "- Priorite 1\n- Priorite 2\n- Priorite 3", createdAt: now },
+      { id: uid("tpl"), name: "Review rapide", lines: "- Ce qui a marche\n- Ce qui bloque\n- Next action", createdAt: now },
+    ],
+    habits: [habit1, habit2],
+    habitChecks: {
+      [mk]: {
+        [habit1.id]: { [dayNum]: true, [yNum]: true },
+        [habit2.id]: { [dayNum]: true },
+      },
+    },
+    projects: [proj],
+    activeProjectId: proj.id,
+    projectMilestones: {
+      [proj.id]: [
+        { id: uid("ms"), text: "Structure page", date: yesterday, done: true, createdAt: now - 5000 },
+        { id: uid("ms"), text: "Hero + CTA", date: today, done: false, createdAt: now },
+      ],
+    },
+    collections: [{ id: uid("col"), name: "Lecture", createdAt: now }],
+    collectionItems: {},
+    activeCollectionId: null,
+    moods: {
+      [twoDays]: { level: "yellow", text: "Un peu dispersé." },
+      [yesterday]: { level: "green", text: "Bonne energie." },
+      [today]: { level: "green", text: "Clair et motive." },
+    },
+    yearCursor: new Date().getFullYear(),
+  };
+
+  const collectionId = state.collections[0]?.id;
+  if (collectionId) {
+    state.collectionItems[collectionId] = [
+      { id: uid("item"), text: "Atomic Habits", tags: ["#livre"], date: today, createdAt: now },
+      { id: uid("item"), text: "Deep Work", tags: ["#livre"], date: yesterday, createdAt: now },
+    ];
+    state.activeCollectionId = collectionId;
+  }
+
+  state.projects[0].nextActionId = task1Id;
+  applyTheme(state.theme);
+  save({ skipSync: true });
+  syncAll();
 }
 
 function snapshotForSync() {
@@ -4467,6 +4639,7 @@ function importJson(text, opts = {}) {
   state.lastSyncAt = typeof parsed.lastSyncAt === "number" ? parsed.lastSyncAt : 0;
   state.lastRemoteAt = typeof parsed.lastRemoteAt === "number" ? parsed.lastRemoteAt : 0;
   state.syncHistory = Array.isArray(parsed.syncHistory) ? parsed.syncHistory.slice(0, 12) : [];
+  state.onboardingSeen = parsed.onboardingSeen === true;
 
   state.entries = Array.isArray(parsed.entries) ? parsed.entries.map(sanitizeEntry).filter(Boolean) : [];
 
@@ -4528,6 +4701,7 @@ function resetAll() {
     lastSyncAt: 0,
     lastRemoteAt: 0,
     syncHistory: [],
+    onboardingSeen: false,
     entries: [],
     templates: [],
     habits: [],
@@ -4589,6 +4763,16 @@ async function init() {
   el.authSignUp?.addEventListener("click", signUpWithEmail);
   el.btnLogout?.addEventListener("click", signOut);
   el.btnSyncNow?.addEventListener("click", () => pushState("manual"));
+  el.btnOnboarding?.addEventListener("click", openOnboarding);
+  el.onboardingClose?.addEventListener("click", () => el.onboardingDialog?.close());
+  el.onboardingStart?.addEventListener("click", finishOnboarding);
+  el.onboardingDemo?.addEventListener("click", () => {
+    if (hasUserData()) {
+      const ok = confirm("Charger la demo va remplacer tes donnees actuelles. Continuer ?");
+      if (!ok) return;
+    }
+    applyDemoData();
+  });
 
   // Tabs
   el.tabs.forEach(t => t.addEventListener("click", (e) => {
@@ -4927,6 +5111,9 @@ async function init() {
   // initial render
   initSupabase();
   syncAll();
+  if (!state.onboardingSeen && !hasUserData()) {
+    setTimeout(openOnboarding, 200);
+  }
 }
 
 init().catch(() => {});
