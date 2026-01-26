@@ -1588,6 +1588,21 @@ body.focus-mode .layout{
   .topbar__inner{ flex-wrap: wrap; align-items:flex-start; }
   .topbar__center{ display:none; }
   .topbar__actions{ order: 2; width: 100%; justify-content:flex-end; }
+  .topbar__left{
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .topbar__left::after{
+    content: "";
+    width: 36px;
+    height: 36px;
+  }
+  .brand{
+    flex: 1;
+    justify-content: center;
+  }
+  .brand__title{ text-align: center; }
   .btn--drawer{ display:inline-flex; align-items:center; justify-content:center; }
   .tabs{
     width: 100%;
@@ -1616,10 +1631,13 @@ body.focus-mode .layout{
     width: min(84vw, 320px);
     z-index: 30;
     transform: translateX(-110%);
-    transition: transform 0.2s ease;
+    transition: transform 0.25s ease;
     background: var(--bg);
     padding: var(--space-3);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
   body.drawer-open .side{
     transform: translateX(0);

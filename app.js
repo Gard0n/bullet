@@ -1450,7 +1450,11 @@ function uniqueDays() {
 function renderDaysList() {
   const days = uniqueDays();
   const filtered = filterDaysByView(days);
-  el.daysCount.textContent = String(filtered.length);
+  if (el.daysCount) el.daysCount.textContent = String(filtered.length);
+  if (!el.daysList) {
+    renderTagIndex();
+    return;
+  }
   el.daysList.innerHTML = "";
 
   for (const d of filtered.slice(0, 70)) {
