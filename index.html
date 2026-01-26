@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Projet 02 — Bullet Journal</title>
+  <meta name="description" content="Bullet journal local : daily log, habitudes, projets et reviews." />
+  <meta name="theme-color" content="#19500e" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <div class="topbar__left">
+        <div class="brand">
+          <span class="brand__dot" aria-hidden="true"></span>
+          <div>
+            <p class="brand__kicker">Projet 02</p>
+            <h1 class="brand__title">Bullet Journal</h1>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar__center">
+        <nav class="tabs" aria-label="Navigation">
+          <a class="tab" href="#dashboard" data-route="dashboard">Dashboard</a>
+          <a class="tab" href="#daily" data-route="daily">Daily</a>
+          <a class="tab" href="#review" data-route="review">Review</a>
+          <a class="tab" href="#monthly" data-route="monthly">Mensuel</a>
+          <a class="tab" href="#habits" data-route="habits">Habits</a>
+          <a class="tab" href="#projects" data-route="projects">Projets</a>
+          <a class="tab" href="#collections" data-route="collections">Collections</a>
+          <a class="tab" href="#year" data-route="year">Année</a>
+        </nav>
+      </div>
+
+      <div class="topbar__actions">
+        <details class="menu">
+          <summary class="btn btn--ghost">Paramètres</summary>
+          <div class="menu__panel">
+            <button id="btnTheme" class="btn btn--ghost" type="button" aria-pressed="false">🌙 Sombre</button>
+            <button id="btnExport" class="btn btn--ghost" type="button">Exporter</button>
+
+            <label class="btn btn--ghost filebtn" for="importFile">Importer</label>
+            <input id="importFile" class="sr-only" type="file" accept="application/json" />
+
+            <button id="btnReset" class="btn btn--danger" type="button">Reset</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="side__card">
+        <div class="side__row">
+          <h2 class="h2">Navigation</h2>
+          <button id="btnToday" class="pill" type="button">Aujourd’hui</button>
+        </div>
+
+        <div class="field">
+          <label class="label" for="datePick">Aller à la date</label>
+          <input id="datePick" class="input" type="date" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="search">Recherche (daily)</label>
+          <input id="search" class="input" type="search" placeholder="mot-clé, #tag, texte…" />
+        </div>
+      </div>
+
+      <div class="side__card">
+        <div class="side__row">
+          <h2 class="h2">Jours</h2>
+          <span id="daysCount" class="muted">0</span>
+        </div>
+        <div class="chips chips--tight" id="daysView">
+          <button class="pill is-active" type="button" data-days="all">Tout</button>
+          <button class="pill" type="button" data-days="week">Semaine</button>
+          <button class="pill" type="button" data-days="month">Mois</button>
+        </div>
+        <div id="daysList" class="days"></div>
+      </div>
+
+      <div class="side__card">
+        <div class="side__row">
+          <h2 class="h2">Tags</h2>
+          <span class="muted">Daily</span>
+        </div>
+        <div id="tagIndex" class="chips chips--tight"></div>
+      </div>
+
+      <div class="side__card">
+        <h2 class="h2">Légende BuJo</h2>
+        <ul class="legend">
+          <li><span class="dot dot--note">•</span> Note</li>
+          <li><span class="dot dot--event">○</span> Événement</li>
+          <li><span class="dot dot--task">□</span> Tâche</li>
+          <li><span class="dot dot--done">✓</span> Fait</li>
+          <li><span class="dot dot--migrated">→</span> Migré</li>
+          <li><span class="dot dot--canceled">✕</span> Annulé</li>
+        </ul>
+
+        <div class="legendMood">
+          <div class="legendMood__row">
+            <span class="mDot mDot--green"></span><span>Jour ok</span>
+          </div>
+          <div class="legendMood__row">
+            <span class="mDot mDot--yellow"></span><span>Jour moyen</span>
+          </div>
+          <div class="legendMood__row">
+            <span class="mDot mDot--red"></span><span>Jour dur</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <section class="content">
+
+      <!-- DASHBOARD -->
+      <section class="page" id="page-dashboard" data-page="dashboard">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Dashboard</h2>
+              <p class="muted">Aperçu du jour + tâches + événements + habitudes + collections + mood.</p>
+            </div>
+            <div class="chips">
+              <span class="chip" id="dashTodayChip">Aujourd’hui</span>
+              <span class="chip" id="dashMonthChip">Mois</span>
+            </div>
+            <div class="tools">
+              <details class="menu menu--inline">
+                <summary class="btn btn--ghost">Personnaliser</summary>
+                <div class="menu__panel menu__panel--wide">
+                  <div class="menuSection">
+                    <div class="menuTitle">Dashboard</div>
+                    <div id="dashWidgetToggles" class="toggleList"></div>
+                  </div>
+                  <div class="menuSection">
+                    <div class="menuTitle">Insights</div>
+                    <div id="dashInsightToggles" class="toggleList"></div>
+                  </div>
+                  <button id="dashResetWidgets" class="btn btn--ghost" type="button">Tout afficher</button>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="dashGrid">
+            <article class="dashCard" data-widget="dashMood">
+              <h3 class="dashCard__title">Résumé mental (jour)</h3>
+              <div id="dashMood" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard" data-widget="dashToday">
+              <h3 class="dashCard__title">Aujourd’hui</h3>
+              <div id="dashTodaySummary" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard" data-widget="dashOpenTasks">
+              <h3 class="dashCard__title">Tâches ouvertes</h3>
+              <div id="dashOpenTasks" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard" data-widget="dashBacklog">
+              <h3 class="dashCard__title">Backlog & retard</h3>
+              <div id="dashBacklog" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard" data-widget="dashUpcomingEvents">
+              <h3 class="dashCard__title">Prochains événements</h3>
+              <div id="dashUpcomingEvents" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard" data-widget="dashHabitsToday">
+              <h3 class="dashCard__title">Habits du jour</h3>
+              <div id="dashHabitsToday" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard dashCard--wide" data-widget="dashCollections">
+              <h3 class="dashCard__title">Collections récentes</h3>
+              <div id="dashCollections" class="dashCard__body"></div>
+            </article>
+
+            <article class="dashCard dashCard--wide" data-widget-group="insights">
+              <h3 class="dashCard__title">Insights</h3>
+              <div class="insightGrid">
+                <div class="insightCard" data-widget="insightBestDays">
+                  <div class="insightTitle">Meilleurs jours (mois)</div>
+                  <div id="dashBestDays" class="insightBody"></div>
+                </div>
+                <div class="insightCard" data-widget="insightStableHabits">
+                  <div class="insightTitle">Habitudes les plus stables</div>
+                  <div id="dashStableHabits" class="insightBody"></div>
+                </div>
+                <div class="insightCard" data-widget="insightMoodWeekAvg">
+                  <div class="insightTitle">Mood moyen (semaine)</div>
+                  <div id="dashMoodWeekAvg" class="insightBody"></div>
+                </div>
+                <div class="insightCard" data-widget="insightHabitAlerts">
+                  <div class="insightTitle">Alertes habitudes en baisse</div>
+                  <div id="dashHabitAlerts" class="insightBody"></div>
+                </div>
+                <div class="insightCard" data-widget="insightMoodHabitCorr">
+                  <div class="insightTitle">Corrélations mood & habitudes</div>
+                  <div id="dashMoodHabitCorr" class="insightBody"></div>
+                </div>
+                <div class="insightCard" data-widget="insightTrends">
+                  <div class="insightTitle">Tendances simples (4 semaines)</div>
+                  <div id="dashTrends" class="insightBody"></div>
+                </div>
+              </div>
+            </article>
+
+            <!-- NEW: mood chart -->
+            <article class="dashCard dashCard--wide" data-widget="dashMoodChart">
+              <h3 class="dashCard__title">Mood — % par mois (année)</h3>
+              <div id="dashMoodChart" class="dashCard__body"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- DAILY -->
+      <section class="page" id="page-daily" data-page="daily">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 id="dailyTitle" class="titleDate">Daily</h2>
+              <p class="muted">Daily log + résumé mental du jour.</p>
+            </div>
+            <div class="chips">
+              <span class="chip">Sauvegarde auto</span>
+              <span class="chip">LocalStorage</span>
+            </div>
+            <div class="tools">
+              <details class="menu menu--inline">
+                <summary class="btn btn--ghost">Actions</summary>
+                <div class="menu__panel">
+                  <button id="btnFocus" class="btn btn--ghost" type="button">Focus</button>
+                  <button id="btnExportDay" class="btn btn--ghost" type="button">Exporter jour (MD)</button>
+                  <button id="btnExportWeek" class="btn btn--ghost" type="button">Exporter semaine (MD)</button>
+                  <button id="btnClearDay" class="btn btn--danger" type="button">Vider ce jour</button>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel dailyCapture">
+          <div class="panel__head">
+            <div>
+              <h2 class="titleSmall">Capture</h2>
+              <p class="muted">Mood + notes + tâches en un seul endroit.</p>
+            </div>
+          </div>
+
+          <!-- Mood summary -->
+          <div class="moodBox">
+            <div class="moodBox__top">
+              <h3 class="titleSmall">Résumé mental</h3>
+              <div class="moodPills" role="group" aria-label="État du jour">
+                <button type="button" class="moodPill" data-mood="green"><span class="mDot mDot--green"></span> Vert</button>
+                <button type="button" class="moodPill" data-mood="yellow"><span class="mDot mDot--yellow"></span> Jaune</button>
+                <button type="button" class="moodPill" data-mood="red"><span class="mDot mDot--red"></span> Rouge</button>
+                <button type="button" class="moodPill moodPill--ghost" data-mood="none">Effacer</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="moodText">Description (1–2 phrases)</label>
+              <textarea id="moodText" class="textarea textarea--sm" placeholder="Ex : journée chargée mais ok / stress + fatigue / super énergie…"></textarea>
+            </div>
+            <div class="moodBox__footer">
+              <span id="moodSavedHint" class="muted">Auto-sauvegarde</span>
+            </div>
+          </div>
+
+          <!-- Daily entry form -->
+          <form id="entryForm" class="form">
+            <div class="row row--2">
+              <div class="field">
+                <label class="label" for="kind">Type</label>
+                <select id="kind" class="select">
+                  <option value="note">• Note</option>
+                  <option value="event">○ Événement</option>
+                  <option value="task">□ Tâche</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="projectId">Projet (optionnel)</label>
+                <select id="projectId" class="select"></select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="text">Texte</label>
+              <textarea id="text" class="textarea" minlength="1" placeholder="Ex: □ Appeler X / • idée post / ○ RDV 15:30"></textarea>
+            </div>
+
+            <details class="captureOptions">
+              <summary>Options (heure, tags, date)</summary>
+              <div class="row row--3">
+                <div class="field">
+                  <label class="label" for="time">Heure (optionnel)</label>
+                  <input id="time" class="input" type="time" />
+                </div>
+                <div class="field">
+                  <label class="label" for="tags">Tags (optionnel)</label>
+                  <input id="tags" class="input" type="text" placeholder="ex: #work #sport" />
+                </div>
+                <div class="field">
+                  <label class="label" for="taskDate">Date tâche (optionnel)</label>
+                  <input id="taskDate" class="input" type="date" />
+                </div>
+              </div>
+              <div class="field">
+                <span class="muted">Si vide, la tâche reste chaque jour.</span>
+              </div>
+            </details>
+
+            <div class="form__footer">
+              <button id="btnCancelEdit" class="btn btn--ghost" type="button" hidden>Annuler</button>
+              <button id="btnEntrySubmit" class="btn btn--primary" type="submit">Ajouter</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="dailyLayout">
+          <div class="dailyLeft">
+            <div class="panel">
+              <div class="panel__head">
+                <h2 class="titleSmall">Semaine</h2>
+              </div>
+              <div id="weeklySummary" class="weeklySummary"></div>
+            </div>
+          </div>
+
+          <div class="dailyRight">
+            <div class="panel">
+              <div class="panel__head">
+                <div>
+                  <h2 class="titleSmall">Tâches focus</h2>
+                  <p class="muted">Aujourd’hui, à venir et backlog.</p>
+                </div>
+                <label class="check">
+                  <input id="filterOpenTasks" type="checkbox" />
+                  Tâches ouvertes seulement
+                </label>
+              </div>
+
+              <details class="taskBlock" open>
+                <summary class="taskToggle">
+                  <span class="taskToggle__open">Masquer les listes</span>
+                  <span class="taskToggle__closed">Afficher les listes</span>
+                </summary>
+
+                <div class="taskBoard">
+                  <section class="taskCol">
+                    <div class="taskCol__head">
+                      <span>Aujourd’hui</span>
+                      <span id="dailyTaskCountToday" class="taskCount">0</span>
+                    </div>
+                    <div id="dailyTasksToday" class="entries entries--compact"></div>
+                  </section>
+
+                  <section class="taskCol">
+                    <div class="taskCol__head">
+                      <span>À venir</span>
+                      <span id="dailyTaskCountUpcoming" class="taskCount">0</span>
+                    </div>
+                    <div id="dailyTasksUpcoming" class="entries entries--compact"></div>
+                  </section>
+
+                  <section class="taskCol">
+                    <div class="taskCol__head">
+                      <span>Backlog / sans date</span>
+                      <span id="dailyTaskCountBacklog" class="taskCount">0</span>
+                    </div>
+                    <div id="dailyTasksBacklog" class="entries entries--compact"></div>
+                  </section>
+                </div>
+
+                <details id="dailyTasksDoneWrap" class="taskDone">
+                  <summary>Terminées (<span id="dailyTaskCountDone">0</span>)</summary>
+                  <div id="dailyTasksDone" class="entries entries--compact"></div>
+                </details>
+              </details>
+            </div>
+
+            <div class="panel">
+              <div class="panel__head">
+                <div>
+                  <h2 class="titleSmall">Journal</h2>
+                  <p class="muted">Notes + événements du jour.</p>
+                </div>
+                <div class="chips chips--tight" id="dailyFilters" aria-label="Filtres Journal">
+                  <button class="pill is-active" type="button" data-filter="all">Tout</button>
+                  <button class="pill" type="button" data-filter="note">Notes</button>
+                  <button class="pill" type="button" data-filter="event">Événements</button>
+                </div>
+              </div>
+
+              <p id="emptyState" class="empty" hidden>Aucune note ou événement aujourd’hui.</p>
+              <div id="entries" class="entries" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Templates rapides</h2>
+              <p class="muted">Une liste simple de lignes. Préfixe □/○/• pour typer.</p>
+            </div>
+          </div>
+
+          <form id="templateForm" class="form">
+            <div class="row row--2">
+              <div class="field">
+                <label class="label" for="templateName">Nom du template</label>
+                <input id="templateName" class="input" type="text" maxlength="24" placeholder="Ex : Journée type" />
+              </div>
+              <div class="field">
+                <span class="muted">Ex : □ Focus 2h / ○ 18:30 Sport</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="templateLines">Lignes</label>
+              <textarea id="templateLines" class="textarea" minlength="1" placeholder="□ Tâche importante&#10;• Note rapide&#10;○ 15:00 RDV"></textarea>
+            </div>
+            <div class="form__footer">
+              <button class="btn btn--primary" type="submit">Créer</button>
+            </div>
+          </form>
+
+          <div id="templateList" class="entries"></div>
+        </div>
+      </section>
+
+      <!-- MONTHLY -->
+      <section class="page" id="page-monthly" data-page="monthly">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Monthly log</h2>
+              <p class="muted">Calendrier du mois + événements (○) + mood (point coloré).</p>
+            </div>
+
+            <div class="monthNav">
+              <button id="monthPrev" class="btn btn--ghost" type="button">←</button>
+              <div class="monthNav__title" id="monthTitle">Mois</div>
+              <button id="monthNext" class="btn btn--ghost" type="button">→</button>
+            </div>
+            <div class="tools">
+              <details class="menu menu--inline">
+                <summary class="btn btn--ghost">Actions</summary>
+                <div class="menu__panel">
+                  <button id="btnExportMonth" class="btn btn--ghost" type="button">Mois (MD)</button>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="calendar">
+            <div class="calendar__head">
+              <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+            </div>
+            <div id="calendarGrid" class="calendar__grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HABITS -->
+      <section class="page" id="page-habits" data-page="habits">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Habit tracker</h2>
+              <p class="muted">Crée des habitudes, puis coche chaque jour. (vue mois)</p>
+            </div>
+
+            <div class="monthNav">
+              <button id="habPrev" class="btn btn--ghost" type="button">←</button>
+              <div class="monthNav__title" id="habTitle">Mois</div>
+              <button id="habNext" class="btn btn--ghost" type="button">→</button>
+            </div>
+          </div>
+
+          <form id="habitForm" class="form form--inline form--inline-4">
+            <div class="field">
+              <label class="label" for="habitName">Nouvelle habitude</label>
+              <input id="habitName" class="input" type="text" maxlength="22" placeholder="Ex : Lire 10 min" />
+            </div>
+            <div class="field">
+              <label class="label" for="habitColor">Couleur</label>
+              <input id="habitColor" class="input input--color" type="color" value="#19500e" />
+            </div>
+            <div class="field">
+              <label class="label" for="habitTarget">Objectif hebdo</label>
+              <select id="habitTarget" class="select">
+                <option value="1">1 / 7</option>
+                <option value="2">2 / 7</option>
+                <option value="3">3 / 7</option>
+                <option value="4" selected>4 / 7</option>
+                <option value="5">5 / 7</option>
+                <option value="6">6 / 7</option>
+                <option value="7">7 / 7</option>
+              </select>
+            </div>
+            <button class="btn btn--primary" type="submit">Ajouter</button>
+          </form>
+
+          <div class="habitWrap">
+            <div class="habitHeader">
+              <div class="muted" id="habitStats">0 habitudes</div>
+              <button id="habitClearMonth" class="btn btn--ghost" type="button">Réinitialiser le mois</button>
+            </div>
+
+            <div class="habitTable" id="habitTable"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLLECTIONS -->
+      <section class="page" id="page-collections" data-page="collections">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Collections (thèmes)</h2>
+              <p class="muted">Crée des pages par thème : “Études”, “Projets”, “Idées”, etc.</p>
+            </div>
+          </div>
+
+          <div class="collectionsLayout">
+            <div class="collectionsLeft">
+              <form id="collectionForm" class="form form--inline">
+                <div class="field">
+                  <label class="label" for="collectionName">Créer une collection</label>
+                  <input id="collectionName" class="input" type="text" maxlength="22" placeholder="Ex : Projets" />
+                </div>
+                <button class="btn btn--primary" type="submit">Créer</button>
+              </form>
+
+              <div class="collectionsList" id="collectionsList"></div>
+            </div>
+
+            <div class="collectionsRight">
+              <div class="panel panel--inner">
+                <div class="panel__head">
+                  <div>
+                    <h3 id="collectionTitle" class="titleSmall">Aucune collection</h3>
+                    <p class="muted" id="collectionMeta">Sélectionne une collection à gauche.</p>
+                  </div>
+                  <div class="tools">
+                    <button id="btnDeleteCollection" class="btn btn--danger" type="button" disabled>Supprimer</button>
+                  </div>
+                </div>
+
+                <form id="collectionItemForm" class="form" hidden>
+                  <div class="row row--2">
+                    <div class="field">
+                      <label class="label" for="collectionItemTags">Tags (optionnel)</label>
+                      <input id="collectionItemTags" class="input" type="text" placeholder="#idée #cours" />
+                    </div>
+                    <div class="field">
+                      <label class="label" for="collectionItemDate">Date (optionnel)</label>
+                      <input id="collectionItemDate" class="input" type="date" />
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="collectionItemText">Contenu</label>
+                    <textarea id="collectionItemText" class="textarea" minlength="1" placeholder="Écris ton item…"></textarea>
+                  </div>
+
+                  <div class="form__footer">
+                    <button class="btn btn--primary" type="submit">Ajouter</button>
+                  </div>
+                </form>
+
+                <div id="collectionItems" class="entries"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section class="page" id="page-projects" data-page="projects">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Projets</h2>
+              <p class="muted">Regroupe les tâches par objectif.</p>
+            </div>
+          </div>
+
+          <div class="projectsLayout">
+            <div class="projectsLeft">
+              <form id="projectForm" class="form form--inline">
+                <div class="field">
+                  <label class="label" for="projectName">Nouveau projet</label>
+                  <input id="projectName" class="input" type="text" maxlength="22" placeholder="Ex : Site perso" />
+                </div>
+                <div class="field">
+                  <label class="label" for="projectColor">Couleur</label>
+                  <input id="projectColor" class="input input--color" type="color" value="#19500e" />
+                </div>
+                <button class="btn btn--primary" type="submit">Créer</button>
+              </form>
+
+              <div class="projectsList" id="projectsList"></div>
+            </div>
+
+            <div class="projectsRight">
+              <div class="panel panel--inner">
+                <div class="panel__head">
+                  <div>
+                    <h3 id="projectTitle" class="titleSmall">Aucun projet</h3>
+                    <p class="muted" id="projectMeta">Crée un projet à gauche.</p>
+                  </div>
+                  <div class="tools">
+                    <button id="btnPinProject" class="btn btn--ghost" type="button" disabled>Épingler</button>
+                    <button id="btnArchiveProject" class="btn btn--ghost" type="button" disabled>Archiver</button>
+                    <button id="btnDeleteProject" class="btn btn--danger" type="button" disabled>Supprimer</button>
+                  </div>
+                </div>
+
+                <div id="projectSummary" class="projectSummary"></div>
+
+                <div class="projectBlock">
+                  <div class="projectBlock__head">Next action</div>
+                  <div id="projectNextAction" class="projectNextAction"></div>
+                  <form id="projectNextForm" class="form">
+                    <div class="field">
+                      <label class="label" for="projectNextSelect">Choisir une tâche ouverte</label>
+                      <select id="projectNextSelect" class="select"></select>
+                    </div>
+                    <div class="form__footer">
+                      <button class="btn btn--ghost" type="submit">Définir</button>
+                    </div>
+                  </form>
+                </div>
+
+                <div class="projectBlock">
+                  <div class="projectBlock__head">Ajout rapide</div>
+                  <form id="projectTaskForm" class="form form--inline form--inline-3">
+                    <div class="field">
+                      <label class="label" for="projectTaskText">Nouvelle tâche</label>
+                      <input id="projectTaskText" class="input" type="text" maxlength="80" placeholder="Ex : Préparer plan" />
+                    </div>
+                    <div class="field">
+                      <label class="label" for="projectTaskDate">Date (optionnel)</label>
+                      <input id="projectTaskDate" class="input" type="date" />
+                    </div>
+                    <button class="btn btn--primary" type="submit">Ajouter</button>
+                  </form>
+                </div>
+
+                <div class="projectBlock">
+                  <div class="projectBlock__head">Jalons</div>
+                  <form id="projectMilestoneForm" class="form form--inline form--inline-3">
+                    <div class="field">
+                      <label class="label" for="projectMilestoneText">Nouveau jalon</label>
+                      <input id="projectMilestoneText" class="input" type="text" maxlength="80" placeholder="Ex : Maquette validée" />
+                    </div>
+                    <div class="field">
+                      <label class="label" for="projectMilestoneDate">Date (optionnel)</label>
+                      <input id="projectMilestoneDate" class="input" type="date" />
+                    </div>
+                    <button class="btn btn--ghost" type="submit">Ajouter</button>
+                  </form>
+                  <div id="projectMilestoneList" class="entries entries--compact"></div>
+                </div>
+
+                <div class="projectBlock">
+                  <div class="projectBlock__head">Tâches</div>
+                  <div id="projectTasks" class="entries"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REVIEW -->
+      <section class="page" id="page-review" data-page="review">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Weekly Review</h2>
+              <p class="muted">Bilan rapide de la semaine.</p>
+            </div>
+
+            <div class="monthNav">
+              <button id="reviewPrev" class="btn btn--ghost" type="button">←</button>
+              <div class="monthNav__title" id="reviewTitle">Semaine</div>
+              <button id="reviewNext" class="btn btn--ghost" type="button">→</button>
+            </div>
+          </div>
+
+          <div class="reviewGrid">
+            <article class="reviewCard">
+              <h3 class="dashCard__title">Résumé</h3>
+              <div id="reviewSummary" class="dashCard__body"></div>
+            </article>
+
+            <article class="reviewCard">
+              <h3 class="dashCard__title">Mood</h3>
+              <div id="reviewMood" class="dashCard__body"></div>
+            </article>
+
+            <article class="reviewCard">
+              <h3 class="dashCard__title">Habitudes</h3>
+              <div id="reviewHabits" class="dashCard__body"></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="titleSmall">Workflow de review</h2>
+              <p class="muted">Checklists guidées + questions + résumé auto.</p>
+            </div>
+            <div class="chips chips--tight" id="reviewFlowTabs" aria-label="Type de review">
+              <button class="pill is-active" type="button" data-flow="daily">Quotidien</button>
+              <button class="pill" type="button" data-flow="weekly">Hebdo</button>
+              <button class="pill" type="button" data-flow="monthly">Mensuel</button>
+            </div>
+          </div>
+
+          <div class="reviewFlowMeta">
+            <span id="reviewFlowScope" class="reviewScope"></span>
+            <span id="reviewFlowProgress" class="reviewProgress"></span>
+          </div>
+
+          <div class="reviewFlow">
+            <article class="reviewFlow__col">
+              <h3 class="dashCard__title">Ce qui a bougé</h3>
+              <div id="reviewAutoSummary" class="reviewAuto"></div>
+            </article>
+
+            <article class="reviewFlow__col">
+              <h3 class="dashCard__title">Checklist</h3>
+              <div id="reviewChecklist" class="reviewChecklist"></div>
+            </article>
+
+            <article class="reviewFlow__col">
+              <h3 class="dashCard__title">Questions guidées</h3>
+              <div id="reviewQuestions" class="reviewQuestions"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- YEAR -->
+      <section class="page" id="page-year" data-page="year">
+        <div class="panel">
+          <div class="panel__head">
+            <div>
+              <h2 class="title">Vue Année (mental)</h2>
+              <p class="muted">Chaque jour = un point vert / jaune / rouge. Clique pour ouvrir la journée.</p>
+            </div>
+
+            <div class="yearNav">
+              <button id="yearPrev" class="btn btn--ghost" type="button">←</button>
+              <div id="yearTitle" class="monthNav__title">Année</div>
+              <button id="yearNext" class="btn btn--ghost" type="button">→</button>
+            </div>
+          </div>
+
+          <div id="yearGrid" class="yearGrid"></div>
+        </div>
+      </section>
+
+    </section>
+  </main>
+
+  <script src="utils.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
