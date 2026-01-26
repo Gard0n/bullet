@@ -4811,7 +4811,7 @@ async function init() {
   });
 
   window.addEventListener("resize", () => {
-    if (window.innerWidth > 640) closeDrawer();
+    if (window.innerWidth > 860) closeDrawer();
   });
 
   // Sidebar nav

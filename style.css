@@ -1554,7 +1554,7 @@ body.focus-mode .layout{
 
 @media (max-width: 860px){
   .topbar__inner{ flex-wrap: wrap; align-items:flex-start; }
-  .topbar__center{ order: 3; flex: 1 1 100%; }
+  .topbar__center{ display:none; }
   .topbar__actions{ order: 2; width: 100%; justify-content:flex-end; }
   .btn--drawer{ display:inline-flex; align-items:center; justify-content:center; }
   .tabs{
@@ -1572,31 +1572,8 @@ body.focus-mode .layout{
     left: 16px;
     top: 70px;
   }
-}
-
-@media (max-width: 640px){
-  .wrap{ padding: 0 14px; }
-  .topbar__inner{ padding: 12px 0; gap: 10px; }
-  .brand__title{ font-size: 18px; }
-  .brand__kicker{ font-size: 11px; }
-  .tabs{ padding: 4px; }
-  .tab{ padding: 6px 10px; font-size: 13px; }
-  .panel{ padding: var(--space-3); }
-  .side__card{ padding: 12px; }
-  .layout{ gap: var(--space-3); padding-top: var(--space-3); }
-  .panel__head{ align-items:flex-start; }
-  .chips{ gap: 6px; }
-  .chip{ font-size: 12px; padding: 5px 8px; }
-  .title{ font-size: 22px; }
-  .titleDate{ font-size: 22px; }
-  .row--2, .row--3{ grid-template-columns: 1fr; }
-  .form__footer{ flex-direction: column; align-items: stretch; }
-  .btn{ width: 100%; }
-  .menu__panel .btn{ width: 100%; }
-  .tools{ width: 100%; justify-content: flex-start; }
   body{ padding-bottom: 70px; }
   .bottomNav{ display:flex; }
-  .topbar__center{ display:none; }
   .layout{ padding-bottom: calc(var(--space-5) + 70px); }
 
   .side{
@@ -1623,7 +1600,28 @@ body.focus-mode .layout{
   body.drawer-open{
     overflow: hidden;
   }
+}
 
+@media (max-width: 640px){
+  .wrap{ padding: 0 14px; }
+  .topbar__inner{ padding: 12px 0; gap: 10px; }
+  .brand__title{ font-size: 18px; }
+  .brand__kicker{ font-size: 11px; }
+  .tabs{ padding: 4px; }
+  .tab{ padding: 6px 10px; font-size: 13px; }
+  .panel{ padding: var(--space-3); }
+  .side__card{ padding: 12px; }
+  .layout{ gap: var(--space-3); padding-top: var(--space-3); }
+  .panel__head{ align-items:flex-start; }
+  .chips{ gap: 6px; }
+  .chip{ font-size: 12px; padding: 5px 8px; }
+  .title{ font-size: 22px; }
+  .titleDate{ font-size: 22px; }
+  .row--2, .row--3{ grid-template-columns: 1fr; }
+  .form__footer{ flex-direction: column; align-items: stretch; }
+  .btn{ width: 100%; }
+  .menu__panel .btn{ width: 100%; }
+  .tools{ width: 100%; justify-content: flex-start; }
   .calendar{ border-radius: var(--radius-md); }
   .calendar__head > div{ padding: 8px 4px; font-size: 12px; }
   .dayCell{ min-height: 74px; padding: 8px; }
