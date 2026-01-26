@@ -42,6 +42,7 @@
           <summary class="btn btn--ghost">Compte</summary>
           <div class="menu__panel">
             <div id="syncStatus" class="syncStatus">Sync non configurée</div>
+            <div id="syncHistory" class="syncHistory"></div>
             <button id="btnLogin" class="btn btn--primary" type="button">Se connecter</button>
             <button id="btnSyncNow" class="btn btn--ghost" type="button" hidden>Sync maintenant</button>
             <button id="btnLogout" class="btn btn--ghost" type="button" hidden>Se déconnecter</button>
@@ -825,6 +826,20 @@
       <div class="choiceActions">
         <button id="syncChoiceLocal" class="btn btn--primary" type="button">Garder mes données locales</button>
         <button id="syncChoiceCloud" class="btn btn--ghost" type="button">Charger les données du cloud</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="syncConflictDialog" class="modal">
+    <form method="dialog" class="modal__card">
+      <div class="modal__head">
+        <h3 class="titleSmall">Conflit de synchronisation</h3>
+      </div>
+      <p class="muted">Le cloud a changé depuis ta dernière synchro. Que veux-tu faire ?</p>
+      <div class="choiceActions">
+        <button id="syncConflictLocal" class="btn btn--primary" type="button">Garder mon local (écraser le cloud)</button>
+        <button id="syncConflictCloud" class="btn btn--ghost" type="button">Charger le cloud (écraser mon local)</button>
+        <button id="syncConflictCancel" class="btn btn--ghost" type="button">Annuler</button>
       </div>
     </form>
   </dialog>

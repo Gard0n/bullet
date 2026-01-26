@@ -29,6 +29,10 @@ const el = {
   syncChoiceDialog: document.getElementById("syncChoiceDialog"),
   syncChoiceLocal: document.getElementById("syncChoiceLocal"),
   syncChoiceCloud: document.getElementById("syncChoiceCloud"),
+  syncConflictDialog: document.getElementById("syncConflictDialog"),
+  syncConflictLocal: document.getElementById("syncConflictLocal"),
+  syncConflictCloud: document.getElementById("syncConflictCloud"),
+  syncConflictCancel: document.getElementById("syncConflictCancel"),
 
   tabs: Array.from(document.querySelectorAll(".tab")),
   pages: Array.from(document.querySelectorAll(".page")),
@@ -212,6 +216,10 @@ let state = {
   reviewCursor: todayISO(),
   reviewFlow: defaultReviewFlow(),
   viewPrefs: defaultViewPrefs(),
+  lastLocalChangeAt: 0,
+  lastSyncAt: 0,
+  lastRemoteAt: 0,
+  syncHistory: [],
 
   entries: [],
 
@@ -246,6 +254,8 @@ let dbPromise = null;
 let syncBootstrapInFlight = false;
 let syncPromptedForUserId = "";
 let pendingSyncChoice = null;
+let pendingConflictChoice = null;
+let suppressSync = false;
 
 /* ---------------- Utils ---------------- */
 
@@ -702,7 +712,10 @@ function sanitizeCollectionItem(raw) {
   };
 }
 
-function save() {
+function save(opts = {}) {
+  const skipSync = Boolean(opts.skipSync);
+  const skipLocalStamp = Boolean(opts.skipLocalStamp) || suppressSync;
+  if (!skipLocalStamp) state.lastLocalChangeAt = Date.now();
   const payload = JSON.stringify({ v: STORAGE_VERSION, ...state });
   if (storageMode === "idb") {
     idbSet(STORAGE_KEY, payload).catch(() => {
@@ -712,7 +725,7 @@ function save() {
   } else {
     safeSetItem(STORAGE_KEY, payload, { app: "bullet-journal" });
   }
-  queueSync();
+  if (!skipSync && !suppressSync) queueSync();
 }
 
 async function load() {
@@ -745,6 +758,10 @@ async function load() {
     state.reviewCursor = isIsoDate(p.reviewCursor) ? p.reviewCursor : todayISO();
     state.reviewFlow = sanitizeReviewFlow(p.reviewFlow);
     state.viewPrefs = sanitizeViewPrefs(p.viewPrefs);
+    state.lastLocalChangeAt = typeof p.lastLocalChangeAt === "number" ? p.lastLocalChangeAt : 0;
+    state.lastSyncAt = typeof p.lastSyncAt === "number" ? p.lastSyncAt : 0;
+    state.lastRemoteAt = typeof p.lastRemoteAt === "number" ? p.lastRemoteAt : 0;
+    state.syncHistory = Array.isArray(p.syncHistory) ? p.syncHistory.slice(0, 12) : [];
 
     state.entries = Array.isArray(p.entries) ? p.entries.map(sanitizeEntry).filter(Boolean) : [];
 
@@ -815,6 +832,42 @@ function setSyncStatus(text, tone) {
   if (tone === "err") el.syncStatus.classList.add("syncStatus--err");
 }
 
+function renderSyncHistory() {
+  if (!el.syncHistory) return;
+  el.syncHistory.innerHTML = "";
+  const list = Array.isArray(state.syncHistory) ? state.syncHistory : [];
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.className = "muted";
+    empty.textContent = "Aucune synchro récente.";
+    el.syncHistory.appendChild(empty);
+    return;
+  }
+  list.slice(0, 6).forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = `syncItem syncItem--${entry.status || "ok"}`;
+    const left = document.createElement("span");
+    left.textContent = entry.label || "Sync";
+    const right = document.createElement("span");
+    right.textContent = formatTimeShort(entry.ts);
+    row.appendChild(left);
+    row.appendChild(right);
+    el.syncHistory.appendChild(row);
+  });
+}
+
+function pushSyncHistory({ label, status = "ok" }) {
+  if (!Array.isArray(state.syncHistory)) state.syncHistory = [];
+  state.syncHistory.unshift({
+    label,
+    status,
+    ts: Date.now(),
+  });
+  state.syncHistory = state.syncHistory.slice(0, 12);
+  save({ skipSync: true, skipLocalStamp: true });
+  renderSyncHistory();
+}
+
 function setAuthUi(isLoggedIn) {
   if (el.btnLogin) el.btnLogin.hidden = isLoggedIn;
   if (el.btnLogout) el.btnLogout.hidden = !isLoggedIn;
@@ -855,6 +908,47 @@ function askSyncChoice() {
   return pendingSyncChoice;
 }
 
+function askConflictChoice() {
+  if (!el.syncConflictDialog || !el.syncConflictLocal || !el.syncConflictCloud || !el.syncConflictCancel) {
+    return Promise.resolve("cancel");
+  }
+  if (pendingConflictChoice) return pendingConflictChoice;
+  pendingConflictChoice = new Promise((resolve) => {
+    const dialog = el.syncConflictDialog;
+    const cleanup = () => {
+      el.syncConflictLocal.removeEventListener("click", onLocal);
+      el.syncConflictCloud.removeEventListener("click", onCloud);
+      el.syncConflictCancel.removeEventListener("click", onCancelButton);
+      dialog.removeEventListener("cancel", onCancel);
+      pendingConflictChoice = null;
+    };
+    const onLocal = () => {
+      cleanup();
+      dialog.close();
+      resolve("local");
+    };
+    const onCloud = () => {
+      cleanup();
+      dialog.close();
+      resolve("cloud");
+    };
+    const onCancelButton = () => {
+      cleanup();
+      dialog.close();
+      resolve("cancel");
+    };
+    const onCancel = (event) => {
+      event.preventDefault();
+    };
+    el.syncConflictLocal.addEventListener("click", onLocal);
+    el.syncConflictCloud.addEventListener("click", onCloud);
+    el.syncConflictCancel.addEventListener("click", onCancelButton);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.showModal();
+  });
+  return pendingConflictChoice;
+}
+
 function snapshotForSync() {
   return {
     theme: state.theme,
@@ -889,17 +983,89 @@ function backupLocalState() {
   }
 }
 
-function applyRemoteState(remoteState) {
+function applyRemoteState(remoteState, remoteAt) {
   if (!remoteState || !isPlainObject(remoteState)) return;
+  suppressSync = true;
   const payload = { app: APP_ID, v: STORAGE_VERSION, ...remoteState };
   importJson(JSON.stringify(payload), { confirm: false });
+  suppressSync = false;
+  const stamp = Number.isFinite(remoteAt) ? remoteAt : Date.now();
+  state.lastSyncAt = stamp;
+  state.lastRemoteAt = stamp;
+  save({ skipSync: true, skipLocalStamp: true });
 }
 
-async function pushState(reason = "manual") {
+async function fetchRemoteState() {
+  if (!supabaseClient || !currentUser) return null;
+  const { data, error } = await supabaseClient
+    .from("user_state")
+    .select("state, updated_at")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (error) return null;
+  if (!data) return null;
+  const remoteAt = data.updated_at ? Date.parse(data.updated_at) : 0;
+  if (Number.isFinite(remoteAt) && remoteAt > 0) {
+    state.lastRemoteAt = remoteAt;
+    save({ skipSync: true, skipLocalStamp: true });
+  }
+  return { state: data.state, updatedAt: remoteAt };
+}
+
+async function fetchRemoteUpdatedAt() {
+  if (!supabaseClient || !currentUser) return 0;
+  const { data, error } = await supabaseClient
+    .from("user_state")
+    .select("updated_at")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (error || !data?.updated_at) return 0;
+  const remoteAt = Date.parse(data.updated_at);
+  if (Number.isFinite(remoteAt) && remoteAt > 0) {
+    state.lastRemoteAt = remoteAt;
+    save({ skipSync: true, skipLocalStamp: true });
+    return remoteAt;
+  }
+  return 0;
+}
+
+async function pullRemoteState(source = "manuel") {
+  const remote = await fetchRemoteState();
+  if (!remote || !remote.state) {
+    setSyncStatus("Erreur sync", "err");
+    pushSyncHistory({ label: "Pull échouée", status: "err" });
+    return false;
+  }
+  applyRemoteState(remote.state, remote.updatedAt);
+  setSyncStatus(`Cloud chargé · ${formatTimeShort(remote.updatedAt || Date.now())}`, "ok");
+  pushSyncHistory({ label: `Pull ${source}`, status: "ok" });
+  return true;
+}
+
+async function pushState(reason = "manual", opts = {}) {
   if (!supabaseClient || !currentUser) return;
   if (isSyncing) return;
+  const force = Boolean(opts.force);
   isSyncing = true;
   setSyncStatus(reason === "auto" ? "Synchro automatique…" : "Synchro en cours…", "warn");
+
+  const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
+  const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
+  let remoteChanged = false;
+  if (!force) {
+    const remoteAt = await fetchRemoteUpdatedAt();
+    remoteChanged = remoteAt > lastSync;
+  }
+  if (!force && localChanged && remoteChanged) {
+    isSyncing = false;
+    setSyncStatus("Conflit de sync", "err");
+    pushSyncHistory({ label: "Conflit détecté", status: "warn" });
+    const choice = await askConflictChoice();
+    if (choice === "local") return pushState("override", { force: true });
+    if (choice === "cloud") return pullRemoteState("conflit");
+    return;
+  }
+
   const payload = {
     user_id: currentUser.id,
     state: snapshotForSync(),
@@ -912,10 +1078,15 @@ async function pushState(reason = "manual") {
   isSyncing = false;
   if (error) {
     setSyncStatus("Erreur sync", "err");
+    pushSyncHistory({ label: "Push échouée", status: "err" });
     return;
   }
   lastSyncAt = Date.now();
+  state.lastSyncAt = lastSyncAt;
+  state.lastRemoteAt = lastSyncAt;
+  save({ skipSync: true, skipLocalStamp: true });
   setSyncStatus(`Synchro ok · ${formatTimeShort(lastSyncAt)}`, "ok");
+  pushSyncHistory({ label: reason === "auto" ? "Push auto" : "Push manuel", status: "ok" });
 }
 
 function queueSync() {
@@ -951,10 +1122,12 @@ async function syncOnLogin() {
   const choice = await askSyncChoice();
   backupLocalState();
   if (choice === "local") {
-    await pushState("replace");
+    await pushState("replace", { force: true });
   } else {
-    applyRemoteState(data.state);
+    const remoteAt = data.updated_at ? Date.parse(data.updated_at) : 0;
+    applyRemoteState(data.state, remoteAt);
     setSyncStatus("Cloud chargé", "ok");
+    pushSyncHistory({ label: "Pull login", status: "ok" });
   }
   syncBootstrapInFlight = false;
 }
@@ -1001,6 +1174,7 @@ async function signOut() {
   syncBootstrapInFlight = false;
   setAuthUi(false);
   setSyncStatus("Déconnecté", "warn");
+  renderSyncHistory();
 }
 
 function openAuthDialog() {
@@ -1026,6 +1200,7 @@ function initSupabase() {
     setAuthUi(Boolean(currentUser));
     if (!currentUser) {
       setSyncStatus("Non connecté", "warn");
+      renderSyncHistory();
       return;
     }
     const email = currentUser.email ? ` (${currentUser.email})` : "";
@@ -1043,6 +1218,7 @@ function initSupabase() {
     } else {
       setSyncStatus("Non connecté", "warn");
     }
+    renderSyncHistory();
   });
 }
 
@@ -4287,6 +4463,10 @@ function importJson(text, opts = {}) {
   state.reviewCursor = isIsoDate(parsed.reviewCursor) ? parsed.reviewCursor : todayISO();
   state.reviewFlow = sanitizeReviewFlow(parsed.reviewFlow);
   state.viewPrefs = sanitizeViewPrefs(parsed.viewPrefs);
+  state.lastLocalChangeAt = typeof parsed.lastLocalChangeAt === "number" ? parsed.lastLocalChangeAt : 0;
+  state.lastSyncAt = typeof parsed.lastSyncAt === "number" ? parsed.lastSyncAt : 0;
+  state.lastRemoteAt = typeof parsed.lastRemoteAt === "number" ? parsed.lastRemoteAt : 0;
+  state.syncHistory = Array.isArray(parsed.syncHistory) ? parsed.syncHistory.slice(0, 12) : [];
 
   state.entries = Array.isArray(parsed.entries) ? parsed.entries.map(sanitizeEntry).filter(Boolean) : [];
 
@@ -4344,6 +4524,10 @@ function resetAll() {
     reviewCursor: todayISO(),
     reviewFlow: defaultReviewFlow(),
     viewPrefs: defaultViewPrefs(),
+    lastLocalChangeAt: 0,
+    lastSyncAt: 0,
+    lastRemoteAt: 0,
+    syncHistory: [],
     entries: [],
     templates: [],
     habits: [],
@@ -4379,6 +4563,7 @@ function syncAll() {
   renderPages();
   renderDashboardToggles();
   applyDashboardPreferences();
+  renderSyncHistory();
 }
 
 /* ---------------- INIT ---------------- */
