@@ -5,6 +5,9 @@ const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRic2toYm5raWh2Z3BjcnJ4dnRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzgyMzYsImV4cCI6MjA4NTAxNDIzNn0.Zllx6zSQr48qaGlr6BcQ2MncaWsNzZSPjEI5FMivvtw";
 const SYNC_BACKUP_KEY = `${STORAGE_KEY}_backup`;
+const DB_NAME = "bujo-db";
+const DB_VERSION = 1;
+const STORE_NAME = "app_state";
 
 const el = {
   btnTheme: document.getElementById("btnTheme"),
@@ -235,6 +238,8 @@ let currentUser = null;
 let syncTimer = null;
 let isSyncing = false;
 let lastSyncAt = 0;
+let storageMode = "idb";
+let dbPromise = null;
 
 /* ---------------- Utils ---------------- */
 
@@ -247,6 +252,52 @@ function normalize(str) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+function openDb() {
+  if (!("indexedDB" in window)) return Promise.reject(new Error("no-idb"));
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+async function idbGet(key) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.put(value, key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function initStorage() {
+  try {
+    await openDb();
+    storageMode = "idb";
+  } catch {
+    storageMode = "local";
+  }
 }
 
 function normalizeDailyFilter(filter) {
@@ -646,12 +697,32 @@ function sanitizeCollectionItem(raw) {
 }
 
 function save() {
-  safeSetItem(STORAGE_KEY, JSON.stringify({ v: STORAGE_VERSION, ...state }), { app: "bullet-journal" });
+  const payload = JSON.stringify({ v: STORAGE_VERSION, ...state });
+  if (storageMode === "idb") {
+    idbSet(STORAGE_KEY, payload).catch(() => {
+      storageMode = "local";
+      safeSetItem(STORAGE_KEY, payload, { app: "bullet-journal" });
+    });
+  } else {
+    safeSetItem(STORAGE_KEY, payload, { app: "bullet-journal" });
+  }
   queueSync();
 }
 
-function load() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+async function load() {
+  let raw = null;
+  let fromLocal = false;
+  if (storageMode === "idb") {
+    try {
+      raw = await idbGet(STORAGE_KEY);
+    } catch {
+      storageMode = "local";
+    }
+  }
+  if (!raw) {
+    raw = localStorage.getItem(STORAGE_KEY);
+    fromLocal = Boolean(raw);
+  }
   if (!raw) return;
 
   try {
@@ -704,6 +775,12 @@ function load() {
       if (e.projectId && !projectIds.has(e.projectId)) e.projectId = "";
     });
     cleanupProjectNextActions();
+
+    if (storageMode === "idb" && fromLocal) {
+      idbSet(STORAGE_KEY, raw).catch(() => {
+        storageMode = "local";
+      });
+    }
   } catch {
     // ignore
   }
@@ -4260,8 +4337,9 @@ function syncAll() {
 
 /* ---------------- INIT ---------------- */
 
-function init() {
-  load();
+async function init() {
+  await initStorage();
+  await load();
   applyTheme(state.theme);
 
   const hashRoute = (location.hash || "").replace("#", "");
@@ -4620,7 +4698,7 @@ function init() {
   syncAll();
 }
 
-init();
+init().catch(() => {});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
