@@ -1275,7 +1275,6 @@ function queueSync() {
 async function syncOnLogin() {
   if (!supabaseClient || !currentUser) return;
   if (syncBootstrapInFlight) return;
-  if (syncPromptedForUserId === currentUser.id) return;
   syncBootstrapInFlight = true;
   setSyncStatus("Connexion…", "warn");
   const { data, error } = await supabaseClient
@@ -1293,17 +1292,54 @@ async function syncOnLogin() {
     syncBootstrapInFlight = false;
     return;
   }
-  syncPromptedForUserId = currentUser.id;
-  const choice = await askSyncChoice();
-  backupLocalState();
-  if (choice === "local") {
-    await pushState("replace", { force: true });
-  } else {
-    const remoteAt = data.updated_at ? Date.parse(data.updated_at) : 0;
-    applyRemoteState(data.state, remoteAt);
-    setSyncStatus("Cloud chargé", "ok");
-    pushSyncHistory({ label: "Pull login", status: "ok" });
+  const remoteAt = data.updated_at ? Date.parse(data.updated_at) : 0;
+  if (Number.isFinite(remoteAt) && remoteAt > 0) {
+    state.lastRemoteAt = remoteAt;
+    save({ skipSync: true, skipLocalStamp: true });
   }
+
+  const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
+  const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
+  const remoteChanged = remoteAt > lastSync;
+
+  if (!lastSync) {
+    syncPromptedForUserId = currentUser.id;
+    const choice = await askSyncChoice();
+    backupLocalState();
+    if (choice === "local") {
+      await pushState("replace", { force: true });
+    } else {
+      applyRemoteState(data.state, remoteAt);
+      setSyncStatus("Cloud chargé", "ok");
+      pushSyncHistory({ label: "Pull login", status: "ok" });
+    }
+    syncBootstrapInFlight = false;
+    return;
+  }
+
+  if (remoteChanged && !localChanged) {
+    await pullRemoteState("auto");
+    syncBootstrapInFlight = false;
+    return;
+  }
+
+  if (!remoteChanged && localChanged) {
+    await pushState("auto");
+    syncBootstrapInFlight = false;
+    return;
+  }
+
+  if (!remoteChanged && !localChanged) {
+    setSyncStatus(`Sync à jour · ${formatTimeShort(lastSync)}`, "ok");
+    syncBootstrapInFlight = false;
+    return;
+  }
+
+  setSyncStatus("Conflit de sync", "err");
+  pushSyncHistory({ label: "Conflit détecté", status: "warn" });
+  const choice = await askConflictChoice();
+  if (choice === "local") await pushState("override", { force: true });
+  if (choice === "cloud") await pullRemoteState("conflit");
   syncBootstrapInFlight = false;
 }
 
