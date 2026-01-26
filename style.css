@@ -1498,6 +1498,8 @@ body.focus-mode .layout{
 
 @media (max-width: 980px){
   .layout{ grid-template-columns: 1fr; }
+  .side{ order: 2; }
+  .content{ order: 1; }
   .row{ grid-template-columns: 1fr; }
   .form--inline{ grid-template-columns: 1fr; }
   .form--inline-3{ grid-template-columns: 1fr; }
@@ -1507,4 +1509,67 @@ body.focus-mode .layout{
   .yearDots{ grid-template-columns: repeat(31, 10px); gap: 6px; }
   .yDot{ width: 10px; height: 10px; }
   .moodRow{ grid-template-columns: 60px 1fr 110px; }
+}
+
+@media (max-width: 860px){
+  .topbar__inner{ flex-wrap: wrap; align-items:flex-start; }
+  .topbar__center{ order: 3; flex: 1 1 100%; }
+  .topbar__actions{ order: 2; width: 100%; justify-content:flex-end; }
+  .tabs{
+    width: 100%;
+    overflow-x: auto;
+    justify-content:flex-start;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ white-space: nowrap; scroll-snap-align: start; }
+  .menu__panel{
+    position: fixed;
+    right: 16px;
+    left: 16px;
+    top: 70px;
+  }
+}
+
+@media (max-width: 640px){
+  .wrap{ padding: 0 14px; }
+  .topbar__inner{ padding: 12px 0; gap: 10px; }
+  .brand__title{ font-size: 18px; }
+  .brand__kicker{ font-size: 11px; }
+  .tabs{ padding: 4px; }
+  .tab{ padding: 6px 10px; font-size: 13px; }
+  .panel{ padding: var(--space-3); }
+  .side__card{ padding: 12px; }
+  .layout{ gap: var(--space-3); padding-top: var(--space-3); }
+  .panel__head{ align-items:flex-start; }
+  .chips{ gap: 6px; }
+  .chip{ font-size: 12px; padding: 5px 8px; }
+  .title{ font-size: 22px; }
+  .titleDate{ font-size: 22px; }
+  .row--2, .row--3{ grid-template-columns: 1fr; }
+  .form__footer{ flex-direction: column; align-items: stretch; }
+  .btn{ width: 100%; }
+  .menu__panel .btn{ width: 100%; }
+  .tools{ width: 100%; justify-content: flex-start; }
+
+  .habitTable{ border-radius: var(--radius-md); }
+  .hRow, .hHeaderRow{ grid-template-columns: 220px 1fr; min-width: 980px; }
+  .hName{ padding: 10px 12px; }
+  .hCells, .hDays{ min-width: 760px; }
+  .hCell, .hDay{ min-width: 24px; height: 36px; }
+
+  .projectsRight .form--inline-3{ grid-template-columns: 1fr; }
+  .projectsRight .form--inline-3 button{ justify-self: stretch; }
+  .collectionsList, .projectsList{ margin-top: var(--space-2); }
+}
+
+@media (max-width: 520px){
+  .topbar__actions{ flex-wrap: wrap; gap: 6px; }
+  .brand{ gap: 10px; }
+  .brand__dot{ width: 12px; height: 12px; }
+  .title{ font-size: 20px; }
+  .moodRow{ grid-template-columns: 50px 1fr; }
+  .moodRow__pct{ display:none; }
+  .modal__card{ padding: 16px; }
 }
