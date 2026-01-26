@@ -2,12 +2,27 @@ const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
+const SYNC_BACKUP_KEY = `${STORAGE_KEY}_backup`;
 
 const el = {
   btnTheme: document.getElementById("btnTheme"),
   btnExport: document.getElementById("btnExport"),
   importFile: document.getElementById("importFile"),
   btnReset: document.getElementById("btnReset"),
+  btnLogin: document.getElementById("btnLogin"),
+  btnLogout: document.getElementById("btnLogout"),
+  btnSyncNow: document.getElementById("btnSyncNow"),
+  syncStatus: document.getElementById("syncStatus"),
+  authDialog: document.getElementById("authDialog"),
+  authForm: document.getElementById("authForm"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  authSignIn: document.getElementById("authSignIn"),
+  authSignUp: document.getElementById("authSignUp"),
+  authError: document.getElementById("authError"),
+  authClose: document.getElementById("authClose"),
 
   tabs: Array.from(document.querySelectorAll(".tab")),
   pages: Array.from(document.querySelectorAll(".page")),
@@ -215,6 +230,11 @@ let state = {
 };
 
 let editingEntryId = null;
+let supabaseClient = null;
+let currentUser = null;
+let syncTimer = null;
+let isSyncing = false;
+let lastSyncAt = 0;
 
 /* ---------------- Utils ---------------- */
 
@@ -627,6 +647,7 @@ function sanitizeCollectionItem(raw) {
 
 function save() {
   safeSetItem(STORAGE_KEY, JSON.stringify({ v: STORAGE_VERSION, ...state }), { app: "bullet-journal" });
+  queueSync();
 }
 
 function load() {
@@ -686,6 +707,220 @@ function load() {
   } catch {
     // ignore
   }
+}
+
+/* ---------------- Sync (Supabase) ---------------- */
+
+function syncEnabled() {
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+}
+
+function formatTimeShort(ts) {
+  try {
+    return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+function setSyncStatus(text, tone) {
+  if (!el.syncStatus) return;
+  el.syncStatus.textContent = text;
+  el.syncStatus.classList.remove("syncStatus--ok", "syncStatus--warn", "syncStatus--err");
+  if (tone === "ok") el.syncStatus.classList.add("syncStatus--ok");
+  if (tone === "warn") el.syncStatus.classList.add("syncStatus--warn");
+  if (tone === "err") el.syncStatus.classList.add("syncStatus--err");
+}
+
+function setAuthUi(isLoggedIn) {
+  if (el.btnLogin) el.btnLogin.hidden = isLoggedIn;
+  if (el.btnLogout) el.btnLogout.hidden = !isLoggedIn;
+  if (el.btnSyncNow) el.btnSyncNow.hidden = !isLoggedIn;
+}
+
+function snapshotForSync() {
+  return {
+    theme: state.theme,
+    daysView: state.daysView,
+    dailyFilter: state.dailyFilter,
+    selectedDate: state.selectedDate,
+    query: state.query,
+    monthCursor: state.monthCursor,
+    reviewCursor: state.reviewCursor,
+    reviewFlow: state.reviewFlow,
+    viewPrefs: state.viewPrefs,
+    entries: state.entries,
+    templates: state.templates,
+    habits: state.habits,
+    habitChecks: state.habitChecks,
+    projects: state.projects,
+    activeProjectId: state.activeProjectId,
+    projectMilestones: state.projectMilestones,
+    collections: state.collections,
+    collectionItems: state.collectionItems,
+    activeCollectionId: state.activeCollectionId,
+    moods: state.moods,
+    yearCursor: state.yearCursor,
+  };
+}
+
+function backupLocalState() {
+  try {
+    localStorage.setItem(SYNC_BACKUP_KEY, JSON.stringify({ app: APP_ID, v: STORAGE_VERSION, ...snapshotForSync() }));
+  } catch {
+    // ignore
+  }
+}
+
+function applyRemoteState(remoteState) {
+  if (!remoteState || !isPlainObject(remoteState)) return;
+  const payload = { app: APP_ID, v: STORAGE_VERSION, ...remoteState };
+  importJson(JSON.stringify(payload), { confirm: false });
+}
+
+async function pushState(reason = "manual") {
+  if (!supabaseClient || !currentUser) return;
+  if (isSyncing) return;
+  isSyncing = true;
+  setSyncStatus(reason === "auto" ? "Synchro automatique…" : "Synchro en cours…", "warn");
+  const payload = {
+    user_id: currentUser.id,
+    state: snapshotForSync(),
+    version: STORAGE_VERSION,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabaseClient
+    .from("user_state")
+    .upsert(payload, { onConflict: "user_id" });
+  isSyncing = false;
+  if (error) {
+    setSyncStatus("Erreur sync", "err");
+    return;
+  }
+  lastSyncAt = Date.now();
+  setSyncStatus(`Synchro ok · ${formatTimeShort(lastSyncAt)}`, "ok");
+}
+
+function queueSync() {
+  if (!supabaseClient || !currentUser) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    pushState("auto");
+  }, 1200);
+}
+
+async function syncOnLogin() {
+  if (!supabaseClient || !currentUser) return;
+  setSyncStatus("Connexion…", "warn");
+  const { data, error } = await supabaseClient
+    .from("user_state")
+    .select("state, version, updated_at")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (error) {
+    setSyncStatus("Erreur sync", "err");
+    return;
+  }
+  if (!data || !data.state) {
+    await pushState("init");
+    return;
+  }
+
+  const useLocal = confirm(
+    "Des données existent déjà sur le cloud.\nOK = garder les données locales\nAnnuler = charger les données cloud"
+  );
+  backupLocalState();
+  if (useLocal) {
+    await pushState("replace");
+  } else {
+    applyRemoteState(data.state);
+    setSyncStatus("Cloud chargé", "ok");
+  }
+}
+
+async function signInWithEmail() {
+  if (!supabaseClient) return;
+  const email = (el.authEmail?.value || "").trim();
+  const password = el.authPassword?.value || "";
+  if (!email || !password) {
+    if (el.authError) el.authError.textContent = "Email et mot de passe requis.";
+    return;
+  }
+  if (el.authError) el.authError.textContent = "";
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (el.authError) el.authError.textContent = "Connexion impossible. Vérifie tes identifiants.";
+    return;
+  }
+  if (el.authDialog?.open) el.authDialog.close();
+}
+
+async function signUpWithEmail() {
+  if (!supabaseClient) return;
+  const email = (el.authEmail?.value || "").trim();
+  const password = el.authPassword?.value || "";
+  if (!email || !password) {
+    if (el.authError) el.authError.textContent = "Email et mot de passe requis.";
+    return;
+  }
+  if (el.authError) el.authError.textContent = "";
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    if (el.authError) el.authError.textContent = "Création impossible. Vérifie l'email.";
+    return;
+  }
+  if (el.authDialog?.open) el.authDialog.close();
+}
+
+async function signOut() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  setAuthUi(false);
+  setSyncStatus("Déconnecté", "warn");
+}
+
+function openAuthDialog() {
+  if (!syncEnabled()) {
+    alert("Sync non configurée. Ajoute SUPABASE_URL et SUPABASE_ANON_KEY.");
+    return;
+  }
+  if (el.authError) el.authError.textContent = "";
+  el.authDialog?.showModal();
+}
+
+function initSupabase() {
+  if (!syncEnabled()) {
+    setSyncStatus("Sync non configurée", "warn");
+    return;
+  }
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    setAuthUi(Boolean(currentUser));
+    if (!currentUser) {
+      setSyncStatus("Non connecté", "warn");
+      return;
+    }
+    const email = currentUser.email ? ` (${currentUser.email})` : "";
+    setSyncStatus(`Connecté${email}`, "ok");
+    syncOnLogin();
+  });
+
+  supabaseClient.auth.getSession().then(({ data }) => {
+    currentUser = data?.session?.user || null;
+    setAuthUi(Boolean(currentUser));
+    if (currentUser) {
+      const email = currentUser.email ? ` (${currentUser.email})` : "";
+      setSyncStatus(`Connecté${email}`, "ok");
+      syncOnLogin();
+    } else {
+      setSyncStatus("Non connecté", "warn");
+    }
+  });
 }
 
 function applyTheme(theme) {
@@ -3900,7 +4135,7 @@ function downloadJson(filename, data) {
   URL.revokeObjectURL(url);
 }
 
-function importJson(text) {
+function importJson(text, opts = {}) {
   let parsed;
   try { parsed = JSON.parse(text); } catch { alert("JSON invalide."); return; }
   if (!isPlainObject(parsed)) return alert("JSON invalide.");
@@ -3913,8 +4148,11 @@ function importJson(text) {
     return alert("Version plus récente détectée. Mets à jour l’app avant d’importer.");
   }
 
-  const ok = confirm("Importer les données ?\nOK = remplacer tes données actuelles");
-  if (!ok) return;
+  const confirmImport = opts.confirm !== false;
+  if (confirmImport) {
+    const ok = confirm("Importer les données ?\nOK = remplacer tes données actuelles");
+    if (!ok) return;
+  }
 
   state.theme = parsed.theme === "dark" ? "dark" : "light";
   state.route = sanitizeRoute(parsed.route || "dashboard");
@@ -4034,6 +4272,14 @@ function init() {
 
   // Theme
   el.btnTheme.addEventListener("click", () => applyTheme(state.theme === "dark" ? "light" : "dark"));
+
+  // Auth / Sync
+  el.btnLogin?.addEventListener("click", openAuthDialog);
+  el.authClose?.addEventListener("click", () => el.authDialog?.close());
+  el.authSignIn?.addEventListener("click", signInWithEmail);
+  el.authSignUp?.addEventListener("click", signUpWithEmail);
+  el.btnLogout?.addEventListener("click", signOut);
+  el.btnSyncNow?.addEventListener("click", () => pushState("manual"));
 
   // Tabs
   el.tabs.forEach(t => t.addEventListener("click", (e) => {
@@ -4370,6 +4616,7 @@ function init() {
   el.btnReset.addEventListener("click", resetAll);
 
   // initial render
+  initSupabase();
   syncAll();
 }
 

@@ -39,6 +39,16 @@
 
       <div class="topbar__actions">
         <details class="menu">
+          <summary class="btn btn--ghost">Compte</summary>
+          <div class="menu__panel">
+            <div id="syncStatus" class="syncStatus">Sync non configurée</div>
+            <button id="btnLogin" class="btn btn--primary" type="button">Se connecter</button>
+            <button id="btnSyncNow" class="btn btn--ghost" type="button" hidden>Sync maintenant</button>
+            <button id="btnLogout" class="btn btn--ghost" type="button" hidden>Se déconnecter</button>
+          </div>
+        </details>
+
+        <details class="menu">
           <summary class="btn btn--ghost">Paramètres</summary>
           <div class="menu__panel">
             <button id="btnTheme" class="btn btn--ghost" type="button" aria-pressed="false">🌙 Sombre</button>
@@ -784,7 +794,30 @@
     </section>
   </main>
 
+  <dialog id="authDialog" class="modal">
+    <form method="dialog" class="modal__card" id="authForm">
+      <div class="modal__head">
+        <h3 class="titleSmall">Connexion</h3>
+        <button id="authClose" class="btn btn--ghost modal__close" type="button">Fermer</button>
+      </div>
+      <div class="field">
+        <label class="label" for="authEmail">Email</label>
+        <input id="authEmail" class="input" type="email" autocomplete="email" placeholder="email@domaine.com" />
+      </div>
+      <div class="field">
+        <label class="label" for="authPassword">Mot de passe</label>
+        <input id="authPassword" class="input" type="password" autocomplete="current-password" />
+      </div>
+      <div id="authError" class="hint"></div>
+      <div class="form__footer">
+        <button id="authSignIn" class="btn btn--primary" type="button">Se connecter</button>
+        <button id="authSignUp" class="btn btn--ghost" type="button">Créer un compte</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>

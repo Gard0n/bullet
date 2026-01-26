@@ -185,6 +185,49 @@ body{
   width: 100%;
   justify-content: center;
 }
+.syncStatus{
+  font-size: 12px;
+  font-weight: 850;
+  color: var(--muted);
+  padding: 4px 2px;
+}
+.syncStatus--ok{ color: var(--mood-green); }
+.syncStatus--warn{ color: var(--mood-yellow); }
+.syncStatus--err{ color: var(--danger); }
+.hint{
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Modal */
+.modal{
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.modal::backdrop{
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+.modal__card{
+  width: min(420px, 92vw);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-md);
+  display:grid;
+  gap: var(--space-3);
+}
+.modal__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+}
+.modal__close{
+  padding: 6px 10px;
+}
 
 /* Buttons/inputs */
 .btn{
