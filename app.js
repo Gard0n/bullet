@@ -26,6 +26,9 @@ const el = {
   authSignUp: document.getElementById("authSignUp"),
   authError: document.getElementById("authError"),
   authClose: document.getElementById("authClose"),
+  syncChoiceDialog: document.getElementById("syncChoiceDialog"),
+  syncChoiceLocal: document.getElementById("syncChoiceLocal"),
+  syncChoiceCloud: document.getElementById("syncChoiceCloud"),
 
   tabs: Array.from(document.querySelectorAll(".tab")),
   pages: Array.from(document.querySelectorAll(".page")),
@@ -240,6 +243,9 @@ let isSyncing = false;
 let lastSyncAt = 0;
 let storageMode = "idb";
 let dbPromise = null;
+let syncBootstrapInFlight = false;
+let syncPromptedForUserId = "";
+let pendingSyncChoice = null;
 
 /* ---------------- Utils ---------------- */
 
@@ -815,6 +821,40 @@ function setAuthUi(isLoggedIn) {
   if (el.btnSyncNow) el.btnSyncNow.hidden = !isLoggedIn;
 }
 
+function askSyncChoice() {
+  if (!el.syncChoiceDialog || !el.syncChoiceLocal || !el.syncChoiceCloud) {
+    return Promise.resolve("cloud");
+  }
+  if (pendingSyncChoice) return pendingSyncChoice;
+  pendingSyncChoice = new Promise((resolve) => {
+    const dialog = el.syncChoiceDialog;
+    const cleanup = () => {
+      el.syncChoiceLocal.removeEventListener("click", onLocal);
+      el.syncChoiceCloud.removeEventListener("click", onCloud);
+      dialog.removeEventListener("cancel", onCancel);
+      pendingSyncChoice = null;
+    };
+    const onLocal = () => {
+      cleanup();
+      dialog.close();
+      resolve("local");
+    };
+    const onCloud = () => {
+      cleanup();
+      dialog.close();
+      resolve("cloud");
+    };
+    const onCancel = (event) => {
+      event.preventDefault();
+    };
+    el.syncChoiceLocal.addEventListener("click", onLocal);
+    el.syncChoiceCloud.addEventListener("click", onCloud);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.showModal();
+  });
+  return pendingSyncChoice;
+}
+
 function snapshotForSync() {
   return {
     theme: state.theme,
@@ -888,6 +928,9 @@ function queueSync() {
 
 async function syncOnLogin() {
   if (!supabaseClient || !currentUser) return;
+  if (syncBootstrapInFlight) return;
+  if (syncPromptedForUserId === currentUser.id) return;
+  syncBootstrapInFlight = true;
   setSyncStatus("Connexion…", "warn");
   const { data, error } = await supabaseClient
     .from("user_state")
@@ -896,23 +939,24 @@ async function syncOnLogin() {
     .maybeSingle();
   if (error) {
     setSyncStatus("Erreur sync", "err");
+    syncBootstrapInFlight = false;
     return;
   }
   if (!data || !data.state) {
     await pushState("init");
+    syncBootstrapInFlight = false;
     return;
   }
-
-  const useLocal = confirm(
-    "Des données existent déjà sur le cloud.\nOK = garder les données locales\nAnnuler = charger les données cloud"
-  );
+  syncPromptedForUserId = currentUser.id;
+  const choice = await askSyncChoice();
   backupLocalState();
-  if (useLocal) {
+  if (choice === "local") {
     await pushState("replace");
   } else {
     applyRemoteState(data.state);
     setSyncStatus("Cloud chargé", "ok");
   }
+  syncBootstrapInFlight = false;
 }
 
 async function signInWithEmail() {
@@ -953,6 +997,8 @@ async function signOut() {
   if (!supabaseClient) return;
   await supabaseClient.auth.signOut();
   currentUser = null;
+  syncPromptedForUserId = "";
+  syncBootstrapInFlight = false;
   setAuthUi(false);
   setSyncStatus("Déconnecté", "warn");
 }

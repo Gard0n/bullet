@@ -816,6 +816,19 @@
     </form>
   </dialog>
 
+  <dialog id="syncChoiceDialog" class="modal">
+    <form method="dialog" class="modal__card">
+      <div class="modal__head">
+        <h3 class="titleSmall">Choix de synchronisation</h3>
+      </div>
+      <p class="muted">Des données existent déjà dans le cloud. Que veux-tu faire ?</p>
+      <div class="choiceActions">
+        <button id="syncChoiceLocal" class="btn btn--primary" type="button">Garder mes données locales</button>
+        <button id="syncChoiceCloud" class="btn btn--ghost" type="button">Charger les données du cloud</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>

@@ -228,6 +228,10 @@ body{
 .modal__close{
   padding: 6px 10px;
 }
+.choiceActions{
+  display:grid;
+  gap: 10px;
+}
 
 /* Buttons/inputs */
 .btn{
