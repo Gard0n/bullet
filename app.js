@@ -4781,6 +4781,12 @@ async function init() {
   el.btnDrawer?.addEventListener("click", toggleDrawer);
   el.drawerOverlay?.addEventListener("click", closeDrawer);
   el.btnDrawerClose?.addEventListener("click", closeDrawer);
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-menu-close]");
+    if (!btn) return;
+    const details = btn.closest("details");
+    if (details) details.removeAttribute("open");
+  });
 
   // Auth / Sync
   el.btnLogin?.addEventListener("click", openAuthDialog);
