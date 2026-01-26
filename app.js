@@ -2,8 +2,8 @@ const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRic2toYm5raWh2Z3BjcnJ4dnRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzgyMzYsImV4cCI6MjA4NTAxNDIzNn0.Zllx6zSQr48qaGlr6BcQ2MncaWsNzZSPjEI5FMivvtw";
 const SYNC_BACKUP_KEY = `${STORAGE_KEY}_backup`;
 
 const el = {
