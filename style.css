@@ -1655,6 +1655,21 @@ body.focus-mode .layout{
   }
   .side__mobileHead{ display:flex; }
   .sideNav{ display:grid; }
+
+  #page-daily .panel__head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  #page-daily .panel__head .chips{
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #page-daily .panel__head .tools{
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .dailyRight{ order: 1; }
+  .dailyLeft{ order: 2; }
 }
 
 @media (max-width: 640px){
@@ -1677,6 +1692,8 @@ body.focus-mode .layout{
   .btn{ width: 100%; }
   .menu__panel .btn{ width: 100%; }
   .tools{ width: 100%; justify-content: flex-start; }
+  #page-daily .panel__head .chips{ display:none; }
+  .taskToggle{ font-size: 12px; }
   .calendar{ border-radius: var(--radius-md); }
   .calendar__head > div{ padding: 8px 4px; font-size: 12px; }
   .dayCell{ min-height: 74px; padding: 8px; }
