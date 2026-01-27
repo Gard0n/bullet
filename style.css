@@ -185,6 +185,19 @@ body{
   width: 100%;
   justify-content: center;
 }
+.menu__section{
+  display:grid;
+  gap: 8px;
+}
+.menu__section > summary{
+  list-style: none;
+}
+.menu__sectionBody{
+  display:grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
 .menu__close{
   display:none;
   justify-content: center;

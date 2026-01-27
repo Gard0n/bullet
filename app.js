@@ -1,5 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
+const APP_VERSION = "2.12";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -18,6 +19,7 @@ const el = {
   btnDrawer: document.getElementById("btnDrawer"),
   drawerOverlay: document.getElementById("drawerOverlay"),
   btnDrawerClose: document.getElementById("btnDrawerClose"),
+  brandTitle: document.getElementById("brandTitle"),
   btnLogin: document.getElementById("btnLogin"),
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
@@ -390,6 +392,12 @@ function todayISO() {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function setBrandVersion() {
+  if (!el.brandTitle) return;
+  el.brandTitle.textContent = `Bullet Journal V${APP_VERSION}`;
+  document.title = `Bullet Journal V${APP_VERSION}`;
 }
 
 function formatDateFR(iso) {
@@ -5243,6 +5251,7 @@ function resetAll() {
 /* ---------------- Sync all UI ---------------- */
 
 function syncAll() {
+  setBrandVersion();
   el.datePick.value = state.selectedDate;
   el.search.value = state.query;
   el.btnFocus.setAttribute("aria-pressed", "false");
@@ -5267,6 +5276,7 @@ function syncAll() {
 async function init() {
   await initStorage();
   await load();
+  setBrandVersion();
   applyTheme(state.theme);
 
   const hashRoute = (location.hash || "").replace("#", "");
