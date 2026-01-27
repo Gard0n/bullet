@@ -811,6 +811,10 @@ body.focus-mode .layout{
   font-weight: 900;
   color: var(--text);
 }
+.smallbtn--active{
+  border-color: rgba(110,231,167,0.45);
+  box-shadow: inset 0 0 0 999px var(--primarySoft);
+}
 .smallbtn:hover{ opacity: 0.92; }
 
 .state{ font-weight: 900; }

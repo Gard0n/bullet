@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.12";
+const APP_VERSION = "2.13";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -243,6 +243,7 @@ let state = {
   lastRemoteAt: 0,
   syncHistory: [],
   localSnapshots: [],
+  top3ByDate: {},
   onboardingSeen: false,
 
   entries: [],
@@ -839,6 +840,7 @@ async function load() {
           .filter(s => s.ts && s.state)
           .slice(0, 3)
       : [];
+    state.top3ByDate = isPlainObject(p.top3ByDate) ? p.top3ByDate : {};
     state.onboardingSeen = p.onboardingSeen === true;
 
     state.entries = Array.isArray(p.entries) ? p.entries.map(sanitizeEntry).filter(Boolean) : [];
@@ -1205,6 +1207,7 @@ function applyDemoData() {
     lastRemoteAt: 0,
     syncHistory: [],
     localSnapshots: [],
+    top3ByDate: {},
     onboardingSeen: true,
     entries: [
       {
@@ -1309,6 +1312,7 @@ function snapshotForSync() {
     reviewFlow: state.reviewFlow,
     viewPrefs: state.viewPrefs,
     habitView: state.habitView,
+    top3ByDate: state.top3ByDate,
     entries: state.entries,
     templates: state.templates,
     habits: state.habits,
@@ -1416,6 +1420,7 @@ async function pushState(reason = "manual", opts = {}) {
     isSyncing = false;
     setSyncStatus("Conflit de sync", "err");
     pushSyncHistory({ label: "Conflit détecté", status: "warn" });
+    showToast("Conflit sync: local vs cloud", "warn");
     const choice = await askConflictChoice();
     if (choice === "local") return pushState("override", { force: true });
     if (choice === "cloud") return pullRemoteState("conflit");
@@ -2177,6 +2182,52 @@ function renderDaily() {
   renderWeeklySummary();
 }
 
+function top3ListForDate(dateIso) {
+  if (!isPlainObject(state.top3ByDate)) state.top3ByDate = {};
+  if (!Array.isArray(state.top3ByDate[dateIso])) state.top3ByDate[dateIso] = [];
+  return state.top3ByDate[dateIso];
+}
+
+function isTop3(entryId, dateIso = state.selectedDate) {
+  return top3ListForDate(dateIso).includes(entryId);
+}
+
+function toggleTop3(entryId, dateIso = state.selectedDate) {
+  const list = top3ListForDate(dateIso);
+  const idx = list.indexOf(entryId);
+  if (idx >= 0) list.splice(idx, 1);
+  else {
+    list.unshift(entryId);
+    state.top3ByDate[dateIso] = list.slice(0, 3);
+  }
+  save();
+  if (state.route === "daily") renderDailyTasksBoard();
+}
+
+function cleanupTop3Entry(entryId) {
+  if (!isPlainObject(state.top3ByDate)) return;
+  Object.keys(state.top3ByDate).forEach(dateIso => {
+    const list = Array.isArray(state.top3ByDate[dateIso]) ? state.top3ByDate[dateIso] : [];
+    state.top3ByDate[dateIso] = list.filter(id => id !== entryId).slice(0, 3);
+  });
+}
+
+function assignActiveProject(entryId) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry || entry.kind !== "task") return;
+  const projectId = state.activeProjectId;
+  if (!projectId) {
+    showToast("Aucun projet actif", "warn");
+    setRoute("projects");
+    return;
+  }
+  entry.projectId = projectId;
+  save();
+  showToast("Ajoute au projet actif", "ok");
+  if (state.route === "daily") renderDaily();
+  if (state.route === "projects") renderProjects();
+}
+
 function renderDailyEntry(entry) {
   const card = document.createElement("article");
   card.className = `entry entry--${entry.kind}`;
@@ -2263,6 +2314,14 @@ function renderDailyEntry(entry) {
   actions.className = "entry__actions";
 
   if (entry.kind === "task") {
+    if (entry.date === state.selectedDate && isTaskOpen(entry)) {
+      const top = mkAction(isTop3(entry.id) ? "★" : "☆", "Top 3", () => toggleTop3(entry.id));
+      top.classList.toggle("smallbtn--active", isTop3(entry.id));
+      actions.appendChild(top);
+    }
+    if (!entry.projectId) {
+      actions.appendChild(mkAction("P+", "Projet actif", () => assignActiveProject(entry.id)));
+    }
     actions.appendChild(mkAction("✓", "Fait", () => setTaskState(entry.id, "done")));
     actions.appendChild(mkAction("→", "Migrer", () => setTaskState(entry.id, "migrated")));
     actions.appendChild(mkAction("✕", "Annuler", () => setTaskState(entry.id, "canceled")));
@@ -2331,7 +2390,11 @@ function renderDailyTasksBoard() {
   if (el.dailyTaskCountDone) el.dailyTaskCountDone.textContent = String(doneToday.length);
 
   if (el.dailyTop3) {
-    const top3 = todayOpen.slice(0, 3);
+    const pinned = top3ListForDate(today)
+      .map(id => todayOpen.find(t => t.id === id))
+      .filter(Boolean);
+    const rest = todayOpen.filter(t => !pinned.some(p => p.id === t.id));
+    const top3 = [...pinned, ...rest].slice(0, 3);
     renderTaskList(el.dailyTop3, top3, "Aucune priorité aujourd’hui.");
   }
 
@@ -2467,6 +2530,7 @@ function updateDailyEntry(id, { date, kind, time, tags, text, projectId }) {
 function deleteDailyEntry(id) {
   const ok = confirm("Supprimer cette entrée ?");
   if (!ok) return;
+  cleanupTop3Entry(id);
   state.entries = state.entries.filter(e => e.id !== id);
   cleanupProjectNextActions();
   save();
@@ -2486,6 +2550,7 @@ function setTaskState(id, next) {
   const entry = state.entries.find(e => e.id === id);
   if (!entry || entry.kind !== "task") return;
   entry.taskState = next;
+  if (!isTaskOpen(entry)) cleanupTop3Entry(id);
   save();
   if (state.route === "daily") renderDaily();
   if (state.route === "dashboard") renderDashboard();
@@ -5173,6 +5238,7 @@ function importJson(text, opts = {}) {
   state.lastRemoteAt = typeof parsed.lastRemoteAt === "number" ? parsed.lastRemoteAt : 0;
   state.syncHistory = Array.isArray(parsed.syncHistory) ? parsed.syncHistory.slice(0, 12) : [];
   state.localSnapshots = [];
+  state.top3ByDate = {};
   state.onboardingSeen = parsed.onboardingSeen === true;
 
   state.entries = Array.isArray(parsed.entries) ? parsed.entries.map(sanitizeEntry).filter(Boolean) : [];
@@ -5237,6 +5303,7 @@ function resetAll() {
     lastRemoteAt: 0,
     syncHistory: [],
     localSnapshots: [],
+    top3ByDate: {},
     onboardingSeen: false,
     entries: [],
     templates: [],
