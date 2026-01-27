@@ -152,6 +152,8 @@ body{
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   z-index: 20;
+  max-height: min(78vh, 560px);
+  overflow: auto;
 }
 .menu__panel--wide{
   min-width: 260px;
