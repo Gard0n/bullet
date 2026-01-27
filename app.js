@@ -271,6 +271,8 @@ let pendingConflictChoice = null;
 let suppressSync = false;
 const REALTIME_POLL_MS = 25000;
 let lastFreshCheckAt = 0;
+const AUTO_PUSH_MIN_MS = 12000;
+let lastAutoPushAt = 0;
 
 /* ---------------- Utils ---------------- */
 
@@ -839,6 +841,7 @@ async function load() {
 
     state.moods = isPlainObject(p.moods) ? p.moods : {};
     state.yearCursor = typeof p.yearCursor === "number" ? p.yearCursor : new Date().getFullYear();
+    lastAutoPushAt = state.lastSyncAt || 0;
 
     const projectIds = new Set(state.projects.map(pr => pr.id));
     state.entries.forEach(e => {
@@ -1343,6 +1346,7 @@ async function pushState(reason = "manual", opts = {}) {
   lastSyncAt = Date.now();
   state.lastSyncAt = lastSyncAt;
   state.lastRemoteAt = lastSyncAt;
+  if (reason === "auto") lastAutoPushAt = lastSyncAt;
   save({ skipSync: true, skipLocalStamp: true });
   setSyncStatus(`Synchro ok · ${formatTimeShort(lastSyncAt)}`, "ok");
   pushSyncHistory({ label: reason === "auto" ? "Push auto" : "Push manuel", status: "ok" });
@@ -1352,6 +1356,7 @@ function queueSync() {
   if (!supabaseClient || !currentUser) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
+    if (Date.now() - lastAutoPushAt < AUTO_PUSH_MIN_MS) return;
     pushState("auto");
   }, 1200);
 }
