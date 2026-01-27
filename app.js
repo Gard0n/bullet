@@ -28,6 +28,8 @@ const el = {
   syncDebug: document.getElementById("syncDebug"),
   btnSnapshot: document.getElementById("btnSnapshot"),
   btnRestoreSnapshot: document.getElementById("btnRestoreSnapshot"),
+  btnPullCloud: document.getElementById("btnPullCloud"),
+  btnPushLocal: document.getElementById("btnPushLocal"),
   authDialog: document.getElementById("authDialog"),
   authForm: document.getElementById("authForm"),
   authEmail: document.getElementById("authEmail"),
@@ -1033,6 +1035,8 @@ function setAuthUi(isLoggedIn) {
   if (el.btnForceRefresh) el.btnForceRefresh.hidden = !isLoggedIn;
   if (el.btnSnapshot) el.btnSnapshot.hidden = !isLoggedIn;
   if (el.btnRestoreSnapshot) el.btnRestoreSnapshot.hidden = !isLoggedIn;
+  if (el.btnPullCloud) el.btnPullCloud.hidden = !isLoggedIn;
+  if (el.btnPushLocal) el.btnPushLocal.hidden = !isLoggedIn;
   if (el.syncCloudMeta) el.syncCloudMeta.hidden = !isLoggedIn;
   if (el.syncDebug) el.syncDebug.hidden = !isLoggedIn;
   renderSyncDebug();
@@ -1648,6 +1652,14 @@ async function forceRefreshApp() {
 async function syncNowSmart() {
   await checkRemoteFreshness("manuel");
   await pushState("manual");
+}
+
+async function pullCloudNow() {
+  await pullRemoteState("manuel");
+}
+
+async function pushLocalNow() {
+  await pushState("override", { force: true });
 }
 
 function initSupabase() {
@@ -5231,6 +5243,8 @@ async function init() {
   el.btnForceRefresh?.addEventListener("click", forceRefreshApp);
   el.btnSnapshot?.addEventListener("click", createLocalSnapshot);
   el.btnRestoreSnapshot?.addEventListener("click", restoreLocalSnapshot);
+  el.btnPullCloud?.addEventListener("click", pullCloudNow);
+  el.btnPushLocal?.addEventListener("click", pushLocalNow);
   el.btnOnboarding?.addEventListener("click", openOnboarding);
   el.onboardingClose?.addEventListener("click", () => el.onboardingDialog?.close());
   el.onboardingStart?.addEventListener("click", finishOnboarding);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "bujo-cache-v6";
+const CACHE_NAME = "bujo-cache-v7";
 const ASSETS = [
   "./",
   "./index.html",
