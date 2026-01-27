@@ -1202,6 +1202,72 @@ body.focus-mode .layout{
   gap: 12px;
   flex-wrap: wrap;
 }
+.habitCards{
+  display:grid;
+  gap: 10px;
+}
+.habitCard{
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  display:grid;
+  gap: 8px;
+  background: var(--card);
+}
+.habitCard.is-behind{
+  border-color: color-mix(in srgb, #f19316 40%, var(--border));
+}
+.habitCard__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
+}
+.habitCard__title{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  min-width: 0;
+}
+.habitCard__label{
+  font-weight: 950;
+  font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.habitCard__meta{
+  display:grid;
+  gap: 6px;
+}
+.habitCard__badges{
+  display:flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.habitCard__week{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.habitCard__day{
+  border: 1px solid var(--border);
+  background: var(--soft);
+  color: var(--text);
+  border-radius: 10px;
+  height: 36px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.habitCard__day.is-disabled{
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.habitCard__day.is-today{
+  outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: -2px;
+}
 .habitTable{
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1809,6 +1875,16 @@ body.focus-mode .layout{
   #page-habits #habitClearMonth{
     width: 100%;
   }
+  #page-habits .habitCard{
+    padding: 9px;
+    gap: 7px;
+  }
+  #page-habits .habitCard__label{ font-size: 14px; }
+  #page-habits .habitCard__week{ gap: 5px; }
+  #page-habits .habitCard__day{
+    height: 34px;
+    border-radius: 9px;
+  }
   #page-habits .habitTable{
     max-height: min(62vh, 520px);
   }
@@ -1935,6 +2011,10 @@ body.focus-mode .layout{
   .hCell, .hDay{ min-width: 19px; height: 28px; font-size: 10px; }
   #page-habits .habitTable{
     max-height: min(60vh, 480px);
+  }
+  #page-habits .habitCard__day{
+    height: 32px;
+    font-size: 12px;
   }
   #page-habits .hActions .smallbtn{
     padding: 4px 6px;

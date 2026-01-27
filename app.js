@@ -2729,6 +2729,138 @@ function renderHabits() {
   el.habitStats.textContent = `${state.habits.length} habitude(s)`;
 
   el.habitTable.innerHTML = "";
+  const isCardMode = window.innerWidth <= 760;
+
+  if (isCardMode) {
+    const cards = document.createElement("div");
+    cards.className = "habitCards";
+
+    if (state.habits.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "entry";
+      empty.textContent = "Ajoute ta première habitude ci-dessus (ex: Lire 10 min).";
+      cards.appendChild(empty);
+      el.habitTable.appendChild(cards);
+      return;
+    }
+
+    for (const h of state.habits) {
+      const weeklyTarget = clampWeeklyTarget(h.weeklyTarget);
+      const weekDone = habitDoneCountForWeek(h.id, weekStart);
+      const streak = habitStreak(h.id, today);
+      const pctDone = weeklyTarget ? Math.min(100, Math.round((weekDone / weeklyTarget) * 100)) : 0;
+      const expected = Math.ceil((weeklyTarget * weekIndex) / 7);
+      const remaining = Math.max(0, weeklyTarget - weekDone);
+      const isBehind = remaining > 0 && weekDone < expected;
+
+      const card = document.createElement("div");
+      card.className = "habitCard";
+      if (isBehind) card.classList.add("is-behind");
+
+      const head = document.createElement("div");
+      head.className = "habitCard__head";
+
+      const title = document.createElement("div");
+      title.className = "habitCard__title";
+
+      const dot = document.createElement("span");
+      dot.className = "hDot";
+      dot.style.background = h.color;
+
+      const label = document.createElement("span");
+      label.className = "habitCard__label";
+      label.textContent = h.name;
+
+      title.appendChild(dot);
+      title.appendChild(label);
+
+      const actions = document.createElement("div");
+      actions.className = "hActions";
+      const goalSelect = document.createElement("select");
+      goalSelect.className = "select habitGoalSelect";
+      for (let i = 1; i <= 7; i++) {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = String(i);
+        goalSelect.appendChild(opt);
+      }
+      goalSelect.value = String(weeklyTarget);
+      goalSelect.title = "Objectif hebdo (1-7)";
+      goalSelect.addEventListener("change", () => setHabitTarget(h.id, goalSelect.value));
+      actions.appendChild(goalSelect);
+      actions.appendChild(mkAction("🗑️", "Supprimer", () => deleteHabit(h.id)));
+
+      head.appendChild(title);
+      head.appendChild(actions);
+
+      const meta = document.createElement("div");
+      meta.className = "habitCard__meta";
+
+      const progress = stackBar([
+        { cls: "progressSeg--done", pct: pctDone },
+        { cls: "progressSeg--rest", pct: Math.max(0, 100 - pctDone) },
+      ], "progressBar habitProgress");
+
+      const badges = document.createElement("div");
+      badges.className = "habitCard__badges";
+
+      const goalBadge = document.createElement("span");
+      goalBadge.className = "habitBadge";
+      goalBadge.textContent = `${weekDone}/${weeklyTarget} sem.`;
+
+      const streakBadge = document.createElement("span");
+      streakBadge.className = "habitBadge";
+      streakBadge.textContent = `Streak ${streak}j`;
+
+      badges.appendChild(goalBadge);
+      badges.appendChild(streakBadge);
+
+      if (isBehind) {
+        const hint = document.createElement("span");
+        hint.className = "habitHint";
+        hint.textContent = `Reste ${remaining}`;
+        badges.appendChild(hint);
+      }
+
+      meta.appendChild(progress);
+      meta.appendChild(badges);
+
+      const week = document.createElement("div");
+      week.className = "habitCard__week";
+
+      const hc = habitCheck(state.monthCursor, h.id);
+      for (let i = 0; i < 7; i++) {
+        const iso = addDaysISO(weekStart, i);
+        const isoMonth = monthKeyFromDate(iso);
+        const dayNum = Number(iso.slice(8, 10));
+        const inMonth = isoMonth === state.monthCursor && dayNum <= dim;
+        const on = inMonth ? Boolean(hc[String(dayNum)]) : false;
+        const isToday = iso === today;
+
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "habitCard__day";
+        if (!inMonth) cell.classList.add("is-disabled");
+        if (isToday) cell.classList.add("is-today");
+        if (on) cell.classList.add("is-on");
+        cell.textContent = String(dayNum);
+        if (on) cell.style.boxShadow = `inset 0 0 0 999px ${hexToRgba(h.color, 0.18)}`;
+        cell.addEventListener("click", () => {
+          if (!inMonth) return;
+          toggleHabitDay(state.monthCursor, h.id, dayNum, !on);
+        });
+        week.appendChild(cell);
+      }
+
+      card.appendChild(head);
+      card.appendChild(meta);
+      card.appendChild(week);
+      cards.appendChild(card);
+    }
+
+    el.habitTable.appendChild(cards);
+    return;
+  }
 
   const header = document.createElement("div");
   header.className = "hHeaderRow";
