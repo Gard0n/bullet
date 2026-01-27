@@ -2726,10 +2726,10 @@ function renderHabits() {
   const todayDay = isCurrentMonth ? Number(today.slice(8, 10)) : null;
   const weekStart = weekStartISO(today);
   const weekIndex = weekdayMonIndex(today) + 1;
-  el.habitStats.textContent = `${state.habits.length} habitude(s)`;
+  const isCardMode = window.matchMedia("(max-width: 980px)").matches;
+  el.habitStats.textContent = `${state.habits.length} habitude(s) · ${isCardMode ? "cartes" : "tableau"}`;
 
   el.habitTable.innerHTML = "";
-  const isCardMode = window.innerWidth <= 760;
 
   if (isCardMode) {
     const cards = document.createElement("div");
