@@ -1367,8 +1367,10 @@ async function checkRemoteFreshness(source = "check") {
   // Throttle aggressive repeated checks (focus + visibility + poll).
   if (now - lastFreshCheckAt < 4000) return;
   lastFreshCheckAt = now;
+  const prevRemoteAt = state.lastRemoteAt || 0;
   const remoteAt = await fetchRemoteUpdatedAt();
-  if (remoteAt > (state.lastRemoteAt || 0)) {
+  // fetchRemoteUpdatedAt updates state.lastRemoteAt, so compare to the previous value.
+  if (remoteAt > prevRemoteAt) {
     await handleRemoteUpdate(remoteAt, source);
   }
 }
