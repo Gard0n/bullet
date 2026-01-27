@@ -1,6 +1,6 @@
 ## Bullet Journal (local + cloud)
 
-Un bullet journal en web (statique) avec stockage local, PWA offline, et sync multi-device via Supabase.
+Bullet journal web statique (HTML/CSS/JS) avec stockage local + sync cloud Supabase.
 
 ## Fonctionnalites
 
@@ -9,16 +9,43 @@ Un bullet journal en web (statique) avec stockage local, PWA offline, et sync mu
 - Offline-first (IndexedDB, fallback localStorage).
 - Sync cloud optionnelle (compte Supabase).
 
-## Comment ca marche
-
-- Le site est **statique** (HTML/CSS/JS). GitHub Pages sert les fichiers.
-- Les donnees sont stockees dans le navigateur (IndexedDB).
-- Si l'utilisateur se connecte, les donnees sont synchronisees dans Supabase.
-- Au premier login, l'app demande si on garde le local ou si on charge le cloud.
-
 ## Lien en ligne
 
-https://gard0n.github.io/bullet/
+`https://gard0n.github.io/bullet/`
+
+## Rappel: comment la sync fonctionne
+
+Important: la sync ne marche qu'entre appareils connectes au meme compte Supabase.
+
+- Local: les donnees vivent d'abord dans le navigateur (IndexedDB).
+- Cloud: si connecte, un snapshot complet est stocke dans `user_state`.
+- Premier login: choix entre "garder local" ou "charger cloud".
+
+Bridges anti-"ca ne se met pas a jour":
+
+- Realtime Supabase: pull auto quand le cloud change.
+- Fallback poll: verification toutes les ~25s (si onglet visible).
+- Focus/visible/online: re-check quand tu reviens sur la page.
+
+Protection anti-ecrasement:
+
+- Si le cloud est plus recent et qu'il n'y a pas de modif locale: on pull (on ne push pas).
+- Si local + cloud ont change: on affiche le dialogue de conflit.
+
+Anti-spam:
+
+- Les "push auto" sont limites (throttle) a ~1 toutes les 12 secondes.
+
+Debug sync:
+
+- Menu `Compte` -> bloc debug: User / ID / Local / Sync / Cloud / Mode.
+
+## Point cle multi-device
+
+`localhost` et `gard0n.github.io` sont deux origines differentes:
+
+- ils ne partagent pas localStorage/IndexedDB/session.
+- pour tester la vraie sync multi-device, utilise l'URL en ligne sur les 2.
 
 ## Developpement local
 
@@ -34,9 +61,16 @@ Le workflow GitHub Actions deploye automatiquement sur chaque push:
 1) Activer Email provider:
    - Authentication -> Sign In / Providers -> Email.
 
-2) Creer la table + RLS (SQL Editor):
+2) URL Configuration (sinon les emails pointent vers localhost):
+   - Site URL: `https://gard0n.github.io/bullet/`
+   - Redirect URLs (minimum):
+     - `https://gard0n.github.io/bullet/`
+     - `https://gard0n.github.io/bullet/#*`
+     - (optionnel dev) `http://127.0.0.1:5500/*`
 
-```
+3) Creer la table + RLS (SQL Editor):
+
+```sql
 create table if not exists public.user_state (
   user_id uuid primary key references auth.users(id) on delete cascade,
   state jsonb not null,
@@ -53,9 +87,11 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 ```
 
-3) Configurer les cles dans `app.js`:
+4) Realtime: activer la replication/realtime sur la table `user_state`.
 
-```
+5) Configurer les cles dans `app.js`:
+
+```js
 const SUPABASE_URL = "https://<project>.supabase.co";
 const SUPABASE_ANON_KEY = "<anon_public_key>";
 ```
@@ -65,10 +101,10 @@ Note: l'anon key cote client est normale. Ne pas utiliser la service role key.
 ## FAQ
 
 - Est-ce que ca tourne h24 sur ma machine ?
-  Non. Le site est heberge par GitHub Pages, rien ne tourne localement.
+  Non. GitHub Pages sert les fichiers. Ton PC n'heberge rien.
 
 - Mon serveur VS Code sert a quoi ?
-  Uniquement a tester en local. Tu peux le fermer.
+  Uniquement a tester en local.
 
 - Mes donnees sont-elles sauvegardees ?
-  Oui, localement (IndexedDB). La sync cloud est optionnelle.
+  Oui en local (IndexedDB). La sync cloud est optionnelle.
