@@ -1952,22 +1952,22 @@ body.focus-mode .layout{
     -webkit-overflow-scrolling: touch;
   }
   #page-monthly .calendar__head > div{
-    padding: 6px 3px;
-    font-size: 11px;
+    padding: 5px 2px;
+    font-size: 10px;
   }
   #page-monthly .calendar__head,
   #page-monthly .calendar__grid{
-    min-width: 560px;
+    min-width: 520px;
   }
   #page-monthly .dayCell{
-    min-height: 64px;
-    padding: 6px;
+    min-height: 56px;
+    padding: 5px;
   }
   #page-monthly .dayNum{
-    font-size: 12px;
+    font-size: 11px;
   }
   #page-year .yearMonth{
-    padding: 10px;
+    padding: 9px;
   }
   #page-year .yearMonth__title{
     font-size: 14px;
@@ -1986,6 +1986,7 @@ body.focus-mode .layout{
   #page-year .yDot{
     width: 8px;
     height: 8px;
+    border: 1px solid var(--border);
   }
 
   #reviewHabits{ max-height: 200px; }
@@ -2109,7 +2110,7 @@ body.focus-mode .layout{
 
   #page-monthly .calendar__head,
   #page-monthly .calendar__grid{
-    min-width: 540px;
+    min-width: 500px;
   }
 
   .projectsRight .form--inline-3{ grid-template-columns: 1fr; }
