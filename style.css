@@ -85,7 +85,7 @@ body{
   padding: 16px 0;
 }
 
-.topbar__left{ display:flex; align-items:center; gap: 16px; }
+.topbar__left{ display:flex; align-items:center; gap: 16px; flex: 1; min-width: 0; }
 .topbar__center{ flex:1; display:flex; justify-content:center; }
 .topbar__actions{
   display:flex;
@@ -1711,6 +1711,7 @@ body.focus-mode .layout{
     margin-left: auto;
     justify-content: flex-end;
     gap: 6px;
+    flex-wrap: nowrap;
   }
   .topbar__left{
     order: 1;
@@ -1752,7 +1753,7 @@ body.focus-mode .layout{
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: auto;
   }
   body.drawer-open .side{
     transform: translateX(0);
