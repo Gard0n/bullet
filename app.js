@@ -3956,7 +3956,7 @@ function buildWeeklyTrends() {
 
 function renderDashboard() {
   el.dashTodayChip.textContent = formatDateFR(state.selectedDate);
-  el.dashMonthChip.textContent = capitalize(monthTitleFR(state.monthCursor));
+  if (el.dashMonthChip) el.dashMonthChip.hidden = true;
 
   // mood (today)
   el.dashMood.innerHTML = "";
