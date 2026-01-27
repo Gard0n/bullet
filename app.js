@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.18";
+const APP_VERSION = "2.19";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -110,6 +110,7 @@ const el = {
   monthNext: document.getElementById("monthNext"),
   monthTitle: document.getElementById("monthTitle"),
   calendarGrid: document.getElementById("calendarGrid"),
+  monthlyMobileCards: document.getElementById("monthlyMobileCards"),
 
   // habits
   habPrev: document.getElementById("habPrev"),
@@ -201,6 +202,7 @@ const el = {
   yearNext: document.getElementById("yearNext"),
   yearTitle: document.getElementById("yearTitle"),
   yearGrid: document.getElementById("yearGrid"),
+  yearMobileCards: document.getElementById("yearMobileCards"),
 };
 
 const DASH_WIDGETS = [
@@ -2746,6 +2748,13 @@ function renderMonthly() {
 
   const totalCells = 42;
   const dateIndex = buildDateIndex(state.entries);
+  const isMobile = window.matchMedia("(max-width: 980px)").matches;
+  if (el.monthlyMobileCards) el.monthlyMobileCards.hidden = !isMobile;
+  if (el.calendarGrid) el.calendarGrid.parentElement.hidden = isMobile;
+  if (isMobile) {
+    renderMonthlyMobile(dateIndex, dim);
+    return;
+  }
 
   el.calendarGrid.innerHTML = "";
 
@@ -2807,6 +2816,49 @@ function renderMonthly() {
     cell.addEventListener("click", () => setSelectedDate(cellIso, true));
     el.calendarGrid.appendChild(cell);
   }
+}
+
+function renderMonthlyMobile(dateIndex, dim) {
+  if (!el.monthlyMobileCards) return;
+  el.monthlyMobileCards.innerHTML = "";
+  const mk = state.monthCursor;
+  const list = [];
+  for (let d = 1; d <= dim; d++) {
+    const iso = isoFromMonthDay(mk, d);
+    const stats = dateIndex.get(iso) || { events: 0, tasksOpen: 0, notes: 0 };
+    const mood = getMood(iso);
+    if (!mood.level && !stats.events && !stats.tasksOpen && !stats.notes) continue;
+    list.push({ iso, stats, mood });
+  }
+
+  if (!list.length) {
+    el.monthlyMobileCards.appendChild(mutedBox("Aucun élément ce mois-ci."));
+    return;
+  }
+
+  list.forEach((item) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "mobileCard";
+    card.addEventListener("click", () => setSelectedDate(item.iso, true));
+
+    const left = document.createElement("div");
+    left.className = "mobileCard__left";
+    left.innerHTML = `<div class="mobileCard__date">${formatDateFR(item.iso)}</div>`;
+
+    const right = document.createElement("div");
+    right.className = "mobileCard__meta";
+    const moodDot = moodDotEl(item.mood.level);
+    moodDot.classList.add("mobileCard__dot");
+    right.appendChild(moodDot);
+    if (item.stats.events) right.appendChild(miniBadge(`○ ${item.stats.events}`));
+    if (item.stats.tasksOpen) right.appendChild(miniBadge(`□ ${item.stats.tasksOpen}`));
+    if (item.stats.notes) right.appendChild(miniBadge(`✎ ${item.stats.notes}`));
+
+    card.appendChild(left);
+    card.appendChild(right);
+    el.monthlyMobileCards.appendChild(card);
+  });
 }
 
 function miniBadge(text) {
@@ -5145,6 +5197,14 @@ function renderReview() {
 
 function renderYear() {
   el.yearTitle.textContent = String(state.yearCursor);
+  const isMobile = window.matchMedia("(max-width: 980px)").matches;
+  if (el.yearMobileCards) el.yearMobileCards.hidden = !isMobile;
+  if (el.yearGrid) el.yearGrid.hidden = isMobile;
+  if (isMobile) {
+    renderYearMobile();
+    return;
+  }
+
   el.yearGrid.innerHTML = "";
 
   for (let month = 1; month <= 12; month++) {
@@ -5186,6 +5246,46 @@ function renderYear() {
     box.appendChild(title);
     box.appendChild(dots);
     el.yearGrid.appendChild(box);
+  }
+}
+
+function renderYearMobile() {
+  if (!el.yearMobileCards) return;
+  el.yearMobileCards.innerHTML = "";
+  for (let month = 1; month <= 12; month++) {
+    const mk = `${state.yearCursor}-${String(month).padStart(2, "0")}`;
+    const dim = daysInMonth(mk);
+    let green = 0, yellow = 0, red = 0;
+    for (let d = 1; d <= dim; d++) {
+      const mood = getMood(isoFromMonthDay(mk, d)).level;
+      if (mood === "green") green++;
+      if (mood === "yellow") yellow++;
+      if (mood === "red") red++;
+    }
+
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "mobileCard";
+    card.addEventListener("click", () => {
+      state.monthCursor = mk;
+      save();
+      setRoute("monthly");
+    });
+
+    const left = document.createElement("div");
+    left.className = "mobileCard__left";
+    left.innerHTML = `<div class="mobileCard__date">${capitalize(monthTitleFR(mk))}</div><div class="muted">${mk}</div>`;
+
+    const right = document.createElement("div");
+    right.className = "mobileCard__meta";
+    if (green) right.appendChild(miniBadge(`Vert ${green}`));
+    if (yellow) right.appendChild(miniBadge(`Jaune ${yellow}`));
+    if (red) right.appendChild(miniBadge(`Rouge ${red}`));
+    if (!green && !yellow && !red) right.appendChild(miniBadge("—"));
+
+    card.appendChild(left);
+    card.appendChild(right);
+    el.yearMobileCards.appendChild(card);
   }
 }
 

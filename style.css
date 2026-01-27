@@ -1272,6 +1272,40 @@ body.focus-mode .layout{
   display:grid;
   gap: 10px;
 }
+.mobileCards{
+  display:grid;
+  gap: 10px;
+  margin-top: var(--space-3);
+}
+.mobileCard{
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  display:grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items:center;
+  background: var(--card);
+  cursor: pointer;
+}
+.mobileCard__left{
+  display:grid;
+  gap: 4px;
+  min-width: 0;
+}
+.mobileCard__date{
+  font-weight: 950;
+}
+.mobileCard__meta{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mobileCard__dot{
+  width: 8px;
+  height: 8px;
+}
 .habitCard{
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
