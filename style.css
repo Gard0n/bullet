@@ -1811,6 +1811,34 @@ body.focus-mode .layout{
   .collectionsList, .projectsList{ margin-top: var(--space-2); }
 }
 
+.toastRoot{
+  position: fixed;
+  right: 14px;
+  bottom: 96px;
+  z-index: 80;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast{
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 92%, var(--soft));
+  color: var(--text);
+  font-weight: 800;
+  box-shadow: var(--shadow-1);
+  opacity: 0.98;
+  transform: translateY(0);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.is-out{
+  opacity: 0;
+  transform: translateY(6px);
+}
+.toast--ok{ border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.toast--warn{ border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+
 @media (max-width: 520px){
   .topbar__actions{ flex-wrap: wrap; gap: 6px; }
   .brand{ gap: 10px; }
@@ -1820,4 +1848,5 @@ body.focus-mode .layout{
   .moodRow__pct{ display:none; }
   .modal__card{ padding: 16px; }
   .side{ width: min(90vw, 320px); }
+  .toastRoot{ right: 10px; left: 10px; bottom: 92px; }
 }

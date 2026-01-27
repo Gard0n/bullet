@@ -259,6 +259,7 @@ let syncTimer = null;
 let isSyncing = false;
 let lastSyncAt = 0;
 let realtimeChannel = null;
+let realtimePollTimer = null;
 let storageMode = "idb";
 let dbPromise = null;
 let syncBootstrapInFlight = false;
@@ -266,6 +267,7 @@ let syncPromptedForUserId = "";
 let pendingSyncChoice = null;
 let pendingConflictChoice = null;
 let suppressSync = false;
+const REALTIME_POLL_MS = 25000;
 
 /* ---------------- Utils ---------------- */
 
@@ -874,6 +876,26 @@ function setSyncStatus(text, tone) {
   if (tone === "err") el.syncStatus.classList.add("syncStatus--err");
 }
 
+function getToastRoot() {
+  let root = document.getElementById("toastRoot");
+  if (root) return root;
+  root = document.createElement("div");
+  root.id = "toastRoot";
+  root.className = "toastRoot";
+  document.body.appendChild(root);
+  return root;
+}
+
+function showToast(message, tone = "info") {
+  const root = getToastRoot();
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${tone}`;
+  toast.textContent = message;
+  root.appendChild(toast);
+  window.setTimeout(() => toast.classList.add("is-out"), 1800);
+  window.setTimeout(() => toast.remove(), 2300);
+}
+
 function renderSyncHistory() {
   if (!el.syncHistory) return;
   el.syncHistory.innerHTML = "";
@@ -1294,9 +1316,51 @@ function queueSync() {
 }
 
 function stopRealtimeSync() {
+  if (realtimePollTimer) {
+    window.clearInterval(realtimePollTimer);
+    realtimePollTimer = null;
+  }
   if (!supabaseClient || !realtimeChannel) return;
   supabaseClient.removeChannel(realtimeChannel);
   realtimeChannel = null;
+}
+
+async function handleRemoteUpdate(remoteAt, source) {
+  if (!Number.isFinite(remoteAt) || remoteAt <= (state.lastRemoteAt || 0)) return;
+  state.lastRemoteAt = remoteAt;
+  save({ skipSync: true, skipLocalStamp: true });
+
+  const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
+  const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
+  const remoteChanged = remoteAt > lastSync;
+  if (!remoteChanged) return;
+
+  if (localChanged) {
+    setSyncStatus("Conflit de sync", "err");
+    pushSyncHistory({ label: `Conflit ${source}`, status: "warn" });
+    showToast("Conflit detecte: local vs cloud", "warn");
+    const choice = await askConflictChoice();
+    if (choice === "local") await pushState("override", { force: true });
+    if (choice === "cloud") await pullRemoteState(source);
+    return;
+  }
+
+  const ok = await pullRemoteState(source);
+  if (ok) {
+    showToast("Mise a jour distante recue", "ok");
+  }
+}
+
+function startPollSync() {
+  if (!supabaseClient || !currentUser) return;
+  if (realtimePollTimer) window.clearInterval(realtimePollTimer);
+  realtimePollTimer = window.setInterval(async () => {
+    if (!supabaseClient || !currentUser || document.hidden) return;
+    const remoteAt = await fetchRemoteUpdatedAt();
+    if (remoteAt > (state.lastRemoteAt || 0)) {
+      await handleRemoteUpdate(remoteAt, "poll");
+    }
+  }, REALTIME_POLL_MS);
 }
 
 function startRealtimeSync() {
@@ -1310,28 +1374,11 @@ function startRealtimeSync() {
       { event: "*", schema: "public", table: "user_state", filter },
       async payload => {
         const remoteAt = Date.parse(payload?.new?.updated_at || "");
-        if (!Number.isFinite(remoteAt) || remoteAt <= (state.lastRemoteAt || 0)) return;
-        state.lastRemoteAt = remoteAt;
-        save({ skipSync: true, skipLocalStamp: true });
-
-        const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
-        const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
-        const remoteChanged = remoteAt > lastSync;
-        if (!remoteChanged) return;
-
-        if (localChanged) {
-          setSyncStatus("Conflit de sync", "err");
-          pushSyncHistory({ label: "Conflit realtime", status: "warn" });
-          const choice = await askConflictChoice();
-          if (choice === "local") await pushState("override", { force: true });
-          if (choice === "cloud") await pullRemoteState("realtime");
-          return;
-        }
-
-        await pullRemoteState("realtime");
+        await handleRemoteUpdate(remoteAt, "realtime");
       }
     )
     .subscribe();
+  startPollSync();
 }
 
 async function syncOnLogin() {
