@@ -1702,7 +1702,16 @@ body.focus-mode .layout{
     align-items: flex-start;
     gap: 8px;
   }
+  #page-habits .panel__head{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
   #page-review .monthNav{
+    width: 100%;
+    justify-content: space-between;
+  }
+  #page-habits .monthNav{
     width: 100%;
     justify-content: space-between;
   }
@@ -1710,7 +1719,15 @@ body.focus-mode .layout{
     width: auto;
     padding: 8px 12px;
   }
+  #page-habits .monthNav .btn{
+    width: auto;
+    padding: 8px 12px;
+  }
   #page-review .monthNav__title{
+    flex: 1;
+    text-align: center;
+  }
+  #page-habits .monthNav__title{
     flex: 1;
     text-align: center;
   }
@@ -1762,6 +1779,16 @@ body.focus-mode .layout{
   .hCell, .hDay{ min-width: 20px; height: 30px; font-size: 11px; }
   .habitTable{ -webkit-overflow-scrolling: touch; }
   .calendar__grid{ -webkit-overflow-scrolling: touch; }
+  #page-habits .habitHeader{
+    align-items: stretch;
+    gap: 8px;
+  }
+  #page-habits #habitClearMonth{
+    width: 100%;
+  }
+  #page-habits .habitTable{
+    max-height: min(62vh, 520px);
+  }
 
   .entry__top{ flex-wrap: wrap; align-items:flex-start; }
   .entry__actions{ justify-content:flex-start; }
@@ -1870,4 +1897,7 @@ body.focus-mode .layout{
   .hName{ padding: 7px 8px; font-size: 13px; }
   .hCells, .hDays{ min-width: 460px; }
   .hCell, .hDay{ min-width: 19px; height: 28px; font-size: 10px; }
+  #page-habits .habitTable{
+    max-height: min(60vh, 480px);
+  }
 }
