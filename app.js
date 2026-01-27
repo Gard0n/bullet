@@ -92,6 +92,7 @@ const el = {
   dailyTaskCountUpcoming: document.getElementById("dailyTaskCountUpcoming"),
   dailyTaskCountBacklog: document.getElementById("dailyTaskCountBacklog"),
   dailyTaskCountDone: document.getElementById("dailyTaskCountDone"),
+  dailyTop3: document.getElementById("dailyTop3"),
 
   // templates
   templateForm: document.getElementById("templateForm"),
@@ -1382,6 +1383,7 @@ async function pullRemoteState(source = "manuel") {
   applyRemoteState(remote.state, remote.updatedAt);
   setSyncStatus(`Cloud chargé · ${formatTimeShort(remote.updatedAt || Date.now())}`, "ok");
   pushSyncHistory({ label: `Pull ${source}`, status: "ok" });
+  showToast("Cloud charge", "ok");
   return true;
 }
 
@@ -1442,6 +1444,7 @@ async function pushState(reason = "manual", opts = {}) {
   save({ skipSync: true, skipLocalStamp: true });
   setSyncStatus(`Synchro ok · ${formatTimeShort(lastSyncAt)}`, "ok");
   pushSyncHistory({ label: reason === "auto" ? "Push auto" : "Push manuel", status: "ok" });
+  if (reason !== "auto") showToast("Synchro envoyee", "ok");
 }
 
 function queueSync() {
@@ -2326,6 +2329,11 @@ function renderDailyTasksBoard() {
   if (el.dailyTaskCountUpcoming) el.dailyTaskCountUpcoming.textContent = String(upcomingOpen.length);
   if (el.dailyTaskCountBacklog) el.dailyTaskCountBacklog.textContent = String(backlogOpen.length);
   if (el.dailyTaskCountDone) el.dailyTaskCountDone.textContent = String(doneToday.length);
+
+  if (el.dailyTop3) {
+    const top3 = todayOpen.slice(0, 3);
+    renderTaskList(el.dailyTop3, top3, "Aucune priorité aujourd’hui.");
+  }
 
   renderTaskList(el.dailyTasksToday, todayOpen, "Aucune tâche pour aujourd’hui.");
   renderTaskList(el.dailyTasksUpcoming, upcomingOpen, "Rien de planifié.");

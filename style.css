@@ -603,6 +603,21 @@ html[data-theme="dark"] .btn--primary{ color:#0b0d10; }
 .dailyCapture .moodBox + form{
   margin-top: var(--space-3);
 }
+.top3Block{
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  margin-bottom: 10px;
+  display:grid;
+  gap: 6px;
+  background: color-mix(in srgb, var(--card) 92%, var(--soft));
+}
+.top3Block__head{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
 .taskBoard{
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
