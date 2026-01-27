@@ -1747,6 +1747,8 @@ body.focus-mode .layout{
     bottom: 0;
     left: 0;
     width: min(84vw, 320px);
+    height: 100vh;
+    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
     z-index: 30;
