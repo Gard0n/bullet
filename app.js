@@ -392,6 +392,26 @@ function formatDateShortFR(iso) {
   }).format(d).replace(".", "");
 }
 
+function formatDateCompactFR(iso) {
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    }).format(new Date(`${iso}T00:00:00`));
+  } catch {
+    return iso;
+  }
+}
+
+function isoWeekNumber(iso) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
+  const diffDays = Math.floor((d - yearStart) / 86400000) + 1;
+  return Math.ceil(diffDays / 7);
+}
+
 function monthKeyFromDate(iso) {
   return iso.slice(0, 7);
 }
@@ -4508,7 +4528,8 @@ function renderReview() {
 
   const start = weekStartISO(state.reviewCursor || state.selectedDate);
   const end = addDaysISO(start, 6);
-  el.reviewTitle.textContent = `Semaine du ${formatDateFR(start)} au ${formatDateFR(end)}`;
+  const weekNo = isoWeekNumber(start);
+  el.reviewTitle.textContent = `Semaine #${weekNo} (${formatDateCompactFR(start)} - ${formatDateCompactFR(end)})`;
 
   const weekEntries = entriesInWeek(start);
   const events = weekEntries.filter(e => e.kind === "event").length;

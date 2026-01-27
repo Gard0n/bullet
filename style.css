@@ -1737,11 +1737,13 @@ body.focus-mode .layout{
   .monthNav, .yearNav{ flex-wrap: wrap; }
   .monthNav__title{ font-size: 13px; padding: 6px 10px; }
 
+  #reviewHabits{ max-height: 200px; }
+
   .habitTable{ border-radius: var(--radius-md); }
-  .hRow, .hHeaderRow{ grid-template-columns: 220px 1fr; min-width: 980px; }
-  .hName{ padding: 10px 12px; }
-  .hCells, .hDays{ min-width: 760px; }
-  .hCell, .hDay{ min-width: 24px; height: 36px; }
+  .hRow, .hHeaderRow{ grid-template-columns: 190px 1fr; min-width: 820px; }
+  .hName{ padding: 8px 10px; }
+  .hCells, .hDays{ min-width: 620px; }
+  .hCell, .hDay{ min-width: 22px; height: 32px; font-size: 12px; }
   .habitTable{ -webkit-overflow-scrolling: touch; }
   .calendar__grid{ -webkit-overflow-scrolling: touch; }
 
