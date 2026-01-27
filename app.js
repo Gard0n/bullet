@@ -268,6 +268,7 @@ let pendingSyncChoice = null;
 let pendingConflictChoice = null;
 let suppressSync = false;
 const REALTIME_POLL_MS = 25000;
+let lastFreshCheckAt = 0;
 
 /* ---------------- Utils ---------------- */
 
@@ -1356,11 +1357,20 @@ function startPollSync() {
   if (realtimePollTimer) window.clearInterval(realtimePollTimer);
   realtimePollTimer = window.setInterval(async () => {
     if (!supabaseClient || !currentUser || document.hidden) return;
-    const remoteAt = await fetchRemoteUpdatedAt();
-    if (remoteAt > (state.lastRemoteAt || 0)) {
-      await handleRemoteUpdate(remoteAt, "poll");
-    }
+    await checkRemoteFreshness("poll");
   }, REALTIME_POLL_MS);
+}
+
+async function checkRemoteFreshness(source = "check") {
+  if (!supabaseClient || !currentUser) return;
+  const now = Date.now();
+  // Throttle aggressive repeated checks (focus + visibility + poll).
+  if (now - lastFreshCheckAt < 4000) return;
+  lastFreshCheckAt = now;
+  const remoteAt = await fetchRemoteUpdatedAt();
+  if (remoteAt > (state.lastRemoteAt || 0)) {
+    await handleRemoteUpdate(remoteAt, source);
+  }
 }
 
 function startRealtimeSync() {
@@ -4975,6 +4985,16 @@ async function init() {
 
   window.addEventListener("resize", () => {
     if (window.innerWidth > 860) closeDrawer();
+  });
+
+  window.addEventListener("focus", () => {
+    checkRemoteFreshness("focus");
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkRemoteFreshness("visible");
+  });
+  window.addEventListener("online", () => {
+    checkRemoteFreshness("online");
   });
 
   // Sidebar nav
