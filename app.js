@@ -258,6 +258,7 @@ let currentUser = null;
 let syncTimer = null;
 let isSyncing = false;
 let lastSyncAt = 0;
+let realtimeChannel = null;
 let storageMode = "idb";
 let dbPromise = null;
 let syncBootstrapInFlight = false;
@@ -1292,6 +1293,47 @@ function queueSync() {
   }, 1200);
 }
 
+function stopRealtimeSync() {
+  if (!supabaseClient || !realtimeChannel) return;
+  supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel = null;
+}
+
+function startRealtimeSync() {
+  if (!supabaseClient || !currentUser) return;
+  stopRealtimeSync();
+  const filter = `user_id=eq.${currentUser.id}`;
+  realtimeChannel = supabaseClient
+    .channel(`user_state:${currentUser.id}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "user_state", filter },
+      async payload => {
+        const remoteAt = Date.parse(payload?.new?.updated_at || "");
+        if (!Number.isFinite(remoteAt) || remoteAt <= (state.lastRemoteAt || 0)) return;
+        state.lastRemoteAt = remoteAt;
+        save({ skipSync: true, skipLocalStamp: true });
+
+        const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
+        const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
+        const remoteChanged = remoteAt > lastSync;
+        if (!remoteChanged) return;
+
+        if (localChanged) {
+          setSyncStatus("Conflit de sync", "err");
+          pushSyncHistory({ label: "Conflit realtime", status: "warn" });
+          const choice = await askConflictChoice();
+          if (choice === "local") await pushState("override", { force: true });
+          if (choice === "cloud") await pullRemoteState("realtime");
+          return;
+        }
+
+        await pullRemoteState("realtime");
+      }
+    )
+    .subscribe();
+}
+
 async function syncOnLogin() {
   if (!supabaseClient || !currentUser) return;
   if (syncBootstrapInFlight) return;
@@ -1400,6 +1442,7 @@ async function signUpWithEmail() {
 async function signOut() {
   if (!supabaseClient) return;
   await supabaseClient.auth.signOut();
+  stopRealtimeSync();
   currentUser = null;
   syncPromptedForUserId = "";
   syncBootstrapInFlight = false;
@@ -1430,6 +1473,7 @@ function initSupabase() {
     currentUser = session?.user || null;
     setAuthUi(Boolean(currentUser));
     if (!currentUser) {
+      stopRealtimeSync();
       setSyncStatus("Non connecté", "warn");
       renderSyncHistory();
       return;
@@ -1437,6 +1481,7 @@ function initSupabase() {
     const email = currentUser.email ? ` (${currentUser.email})` : "";
     setSyncStatus(`Connecté${email}`, "ok");
     syncOnLogin();
+    startRealtimeSync();
   });
 
   supabaseClient.auth.getSession().then(({ data }) => {
@@ -1446,7 +1491,9 @@ function initSupabase() {
       const email = currentUser.email ? ` (${currentUser.email})` : "";
       setSyncStatus(`Connecté${email}`, "ok");
       syncOnLogin();
+      startRealtimeSync();
     } else {
+      stopRealtimeSync();
       setSyncStatus("Non connecté", "warn");
     }
     renderSyncHistory();
