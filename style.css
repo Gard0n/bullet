@@ -674,6 +674,7 @@ body.focus-mode .layout{
 .moodPill{
   border: 1px solid var(--border);
   background: var(--card);
+  color: var(--text);
   padding: 8px 10px;
   border-radius: var(--radius-pill);
   font-weight: 950;
@@ -687,7 +688,10 @@ body.focus-mode .layout{
   background: var(--primarySoft);
   border-color: rgba(110,231,167,0.35);
 }
-.moodPill--ghost{ background: transparent; }
+.moodPill--ghost{
+  background: transparent;
+  color: var(--text);
+}
 .moodBox__footer{
   display:flex;
   align-items:center;
