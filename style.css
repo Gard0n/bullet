@@ -1909,7 +1909,7 @@ body.focus-mode .layout{
   }
   #page-monthly .calendar__head,
   #page-monthly .calendar__grid{
-    min-width: 700px;
+    min-width: 640px;
   }
   #page-year .yearGrid{
     grid-template-columns: 1fr;
@@ -1947,27 +1947,45 @@ body.focus-mode .layout{
   .miniBadge{ font-size: 11px; padding: 3px 6px; }
   .monthNav, .yearNav{ flex-wrap: wrap; }
   .monthNav__title{ font-size: 13px; padding: 6px 10px; }
+  #page-monthly .calendar{
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #page-monthly .calendar__head > div{
+    padding: 6px 3px;
+    font-size: 11px;
+  }
   #page-monthly .calendar__head,
   #page-monthly .calendar__grid{
-    min-width: 640px;
+    min-width: 560px;
+  }
+  #page-monthly .dayCell{
+    min-height: 64px;
+    padding: 6px;
+  }
+  #page-monthly .dayNum{
+    font-size: 12px;
   }
   #page-year .yearMonth{
-    padding: 12px;
+    padding: 10px;
   }
   #page-year .yearMonth__title{
     font-size: 14px;
     gap: 8px;
   }
+  #page-year .yearGrid{
+    gap: var(--space-2);
+  }
   #page-year .yearDots{
-    grid-template-columns: repeat(31, 9px);
-    gap: 6px;
+    grid-template-columns: repeat(31, 8px);
+    gap: 5px;
     overflow-x: auto;
     padding-bottom: 4px;
     -webkit-overflow-scrolling: touch;
   }
   #page-year .yDot{
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
   }
 
   #reviewHabits{ max-height: 200px; }
@@ -2091,7 +2109,7 @@ body.focus-mode .layout{
 
   #page-monthly .calendar__head,
   #page-monthly .calendar__grid{
-    min-width: 600px;
+    min-width: 540px;
   }
 
   .projectsRight .form--inline-3{ grid-template-columns: 1fr; }
