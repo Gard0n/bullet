@@ -549,7 +549,13 @@
           <div class="habitWrap">
             <div class="habitHeader">
               <div class="muted" id="habitStats">0 habitudes</div>
-              <button id="habitClearMonth" class="btn btn--ghost" type="button">Réinitialiser le mois</button>
+              <div class="habitHeader__right">
+                <div class="habitViewToggle" role="group" aria-label="Vue habitudes">
+                  <button id="habitViewWeek" class="btn btn--ghost" type="button" aria-pressed="true">Semaine</button>
+                  <button id="habitViewMonth" class="btn btn--ghost" type="button" aria-pressed="false">Mois</button>
+                </div>
+                <button id="habitClearMonth" class="btn btn--ghost" type="button">Réinitialiser le mois</button>
+              </div>
             </div>
 
             <div class="habitTable" id="habitTable"></div>

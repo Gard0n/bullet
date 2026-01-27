@@ -119,6 +119,8 @@ const el = {
   habitTable: document.getElementById("habitTable"),
   habitStats: document.getElementById("habitStats"),
   habitClearMonth: document.getElementById("habitClearMonth"),
+  habitViewWeek: document.getElementById("habitViewWeek"),
+  habitViewMonth: document.getElementById("habitViewMonth"),
 
   // collections
   collectionForm: document.getElementById("collectionForm"),
@@ -232,6 +234,7 @@ let state = {
   reviewCursor: todayISO(),
   reviewFlow: defaultReviewFlow(),
   viewPrefs: defaultViewPrefs(),
+  habitView: "week",
   lastLocalChangeAt: 0,
   lastSyncAt: 0,
   lastRemoteAt: 0,
@@ -813,6 +816,7 @@ async function load() {
     state.reviewCursor = isIsoDate(p.reviewCursor) ? p.reviewCursor : todayISO();
     state.reviewFlow = sanitizeReviewFlow(p.reviewFlow);
     state.viewPrefs = sanitizeViewPrefs(p.viewPrefs);
+    state.habitView = p.habitView === "month" ? "month" : "week";
     state.lastLocalChangeAt = typeof p.lastLocalChangeAt === "number" ? p.lastLocalChangeAt : 0;
     state.lastSyncAt = typeof p.lastSyncAt === "number" ? p.lastSyncAt : 0;
     state.lastRemoteAt = typeof p.lastRemoteAt === "number" ? p.lastRemoteAt : 0;
@@ -958,8 +962,18 @@ function renderCloudMeta() {
     el.syncCloudMeta.innerHTML = "";
     return;
   }
+  const lastSync = state.lastSyncAt || 0;
+  const localPending = (state.lastLocalChangeAt || 0) > lastSync;
+  const cloudAhead = (state.lastRemoteAt || 0) > lastSync;
+  const tone = localPending || cloudAhead ? "warn" : "ok";
   el.syncCloudMeta.hidden = false;
-  el.syncCloudMeta.innerHTML = `<div><b>Cloud maj</b> ${formatTimeDebug(state.lastRemoteAt)}</div>`;
+  el.syncCloudMeta.className = `syncDebug syncDebug--${tone}`;
+  el.syncCloudMeta.innerHTML = [
+    `<div><b>Cloud maj</b> ${formatTimeDebug(state.lastRemoteAt)}</div>`,
+    `<div><b>Derniere sync</b> ${formatTimeDebug(state.lastSyncAt)}</div>`,
+    localPending ? `<div><b>Etat</b> Local en attente</div>` : "",
+    cloudAhead ? `<div><b>Etat</b> Cloud plus recent</div>` : "",
+  ].filter(Boolean).join("");
 }
 
 function renderSyncDebug() {
@@ -1176,6 +1190,7 @@ function applyDemoData() {
     reviewCursor: today,
     reviewFlow: defaultReviewFlow(),
     viewPrefs: defaultViewPrefs(),
+    habitView: "week",
     lastLocalChangeAt: now,
     lastSyncAt: 0,
     lastRemoteAt: 0,
@@ -1284,6 +1299,7 @@ function snapshotForSync() {
     reviewCursor: state.reviewCursor,
     reviewFlow: state.reviewFlow,
     viewPrefs: state.viewPrefs,
+    habitView: state.habitView,
     entries: state.entries,
     templates: state.templates,
     habits: state.habits,
@@ -2824,7 +2840,20 @@ function renderHabits() {
   const weekStart = weekStartISO(today);
   const weekIndex = weekdayMonIndex(today) + 1;
   const isCardMode = window.matchMedia("(max-width: 980px)").matches;
-  el.habitStats.textContent = `${state.habits.length} habitude(s) · ${isCardMode ? "cartes" : "tableau"}`;
+  const habitView = state.habitView === "month" ? "month" : "week";
+
+  if (el.habitViewWeek && el.habitViewMonth) {
+    el.habitViewWeek.hidden = !isCardMode;
+    el.habitViewMonth.hidden = !isCardMode;
+    el.habitViewWeek.setAttribute("aria-pressed", habitView === "week" ? "true" : "false");
+    el.habitViewMonth.setAttribute("aria-pressed", habitView === "month" ? "true" : "false");
+    el.habitViewWeek.classList.toggle("is-active", habitView === "week");
+    el.habitViewMonth.classList.toggle("is-active", habitView === "month");
+  }
+
+  el.habitStats.textContent = `${state.habits.length} habitude(s) · ${
+    isCardMode ? `cartes (${habitView === "week" ? "semaine" : "mois"})` : "tableau"
+  }`;
 
   el.habitTable.innerHTML = "";
 
@@ -2922,36 +2951,59 @@ function renderHabits() {
       meta.appendChild(progress);
       meta.appendChild(badges);
 
-      const week = document.createElement("div");
-      week.className = "habitCard__week";
+      const grid = document.createElement("div");
+      grid.className = "habitCard__week";
 
       const hc = habitCheck(state.monthCursor, h.id);
-      for (let i = 0; i < 7; i++) {
-        const iso = addDaysISO(weekStart, i);
-        const isoMonth = monthKeyFromDate(iso);
-        const dayNum = Number(iso.slice(8, 10));
-        const inMonth = isoMonth === state.monthCursor && dayNum <= dim;
-        const on = inMonth ? Boolean(hc[String(dayNum)]) : false;
-        const isToday = iso === today;
+      if (habitView === "month") {
+        grid.classList.add("habitCard__week--month");
+        for (let d = 1; d <= 31; d++) {
+          const inMonth = d <= dim;
+          const on = inMonth ? Boolean(hc[String(d)]) : false;
+          const isToday = Boolean(todayDay && d === todayDay);
 
-        const cell = document.createElement("button");
-        cell.type = "button";
-        cell.className = "habitCard__day";
-        if (!inMonth) cell.classList.add("is-disabled");
-        if (isToday) cell.classList.add("is-today");
-        if (on) cell.classList.add("is-on");
-        cell.textContent = String(dayNum);
-        if (on) cell.style.boxShadow = `inset 0 0 0 999px ${hexToRgba(h.color, 0.18)}`;
-        cell.addEventListener("click", () => {
-          if (!inMonth) return;
-          toggleHabitDay(state.monthCursor, h.id, dayNum, !on);
-        });
-        week.appendChild(cell);
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "habitCard__day habitCard__day--month";
+          if (!inMonth) cell.classList.add("is-disabled");
+          if (isToday) cell.classList.add("is-today");
+          if (on) cell.classList.add("is-on");
+          cell.textContent = String(d);
+          if (on) cell.style.boxShadow = `inset 0 0 0 999px ${hexToRgba(h.color, 0.18)}`;
+          cell.addEventListener("click", () => {
+            if (!inMonth) return;
+            toggleHabitDay(state.monthCursor, h.id, d, !on);
+          });
+          grid.appendChild(cell);
+        }
+      } else {
+        for (let i = 0; i < 7; i++) {
+          const iso = addDaysISO(weekStart, i);
+          const isoMonth = monthKeyFromDate(iso);
+          const dayNum = Number(iso.slice(8, 10));
+          const inMonth = isoMonth === state.monthCursor && dayNum <= dim;
+          const on = inMonth ? Boolean(hc[String(dayNum)]) : false;
+          const isToday = iso === today;
+
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "habitCard__day";
+          if (!inMonth) cell.classList.add("is-disabled");
+          if (isToday) cell.classList.add("is-today");
+          if (on) cell.classList.add("is-on");
+          cell.textContent = String(dayNum);
+          if (on) cell.style.boxShadow = `inset 0 0 0 999px ${hexToRgba(h.color, 0.18)}`;
+          cell.addEventListener("click", () => {
+            if (!inMonth) return;
+            toggleHabitDay(state.monthCursor, h.id, dayNum, !on);
+          });
+          grid.appendChild(cell);
+        }
       }
 
       card.appendChild(head);
       card.appendChild(meta);
-      card.appendChild(week);
+      card.appendChild(grid);
       cards.appendChild(card);
     }
 
@@ -5099,6 +5151,7 @@ function importJson(text, opts = {}) {
   state.reviewCursor = isIsoDate(parsed.reviewCursor) ? parsed.reviewCursor : todayISO();
   state.reviewFlow = sanitizeReviewFlow(parsed.reviewFlow);
   state.viewPrefs = sanitizeViewPrefs(parsed.viewPrefs);
+  state.habitView = parsed.habitView === "month" ? "month" : "week";
   state.lastLocalChangeAt = typeof parsed.lastLocalChangeAt === "number" ? parsed.lastLocalChangeAt : 0;
   state.lastSyncAt = typeof parsed.lastSyncAt === "number" ? parsed.lastSyncAt : 0;
   state.lastRemoteAt = typeof parsed.lastRemoteAt === "number" ? parsed.lastRemoteAt : 0;
@@ -5162,6 +5215,7 @@ function resetAll() {
     reviewCursor: todayISO(),
     reviewFlow: defaultReviewFlow(),
     viewPrefs: defaultViewPrefs(),
+    habitView: "week",
     lastLocalChangeAt: 0,
     lastSyncAt: 0,
     lastRemoteAt: 0,
@@ -5442,6 +5496,16 @@ async function init() {
     el.habitName.focus();
   });
   el.habitClearMonth.addEventListener("click", () => clearHabitsMonth(state.monthCursor));
+  el.habitViewWeek?.addEventListener("click", () => {
+    state.habitView = "week";
+    save();
+    renderHabits();
+  });
+  el.habitViewMonth?.addEventListener("click", () => {
+    state.habitView = "month";
+    save();
+    renderHabits();
+  });
 
   // Collections
   el.collectionForm.addEventListener("submit", (e) => {

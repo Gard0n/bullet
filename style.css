@@ -289,6 +289,12 @@ body{
   padding: 8px 10px;
   background: color-mix(in srgb, var(--panel) 92%, var(--soft));
 }
+.syncDebug--ok{
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+.syncDebug--warn{
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
 .syncDebug b{ color: var(--text); }
 .syncItem{
   display:flex;
@@ -1206,6 +1212,28 @@ body.focus-mode .layout{
   gap: 12px;
   flex-wrap: wrap;
 }
+.habitHeader__right{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.habitViewToggle{
+  display:inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+}
+.habitViewToggle .btn{
+  width: auto;
+  padding: 6px 10px;
+}
+.habitViewToggle .btn.is-active{
+  background: var(--primarySoft);
+  border-color: rgba(110,231,167,0.35);
+}
 .habitCards{
   display:grid;
   gap: 10px;
@@ -1255,6 +1283,9 @@ body.focus-mode .layout{
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
+.habitCard__week--month{
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
 .habitCard__day{
   border: 1px solid var(--border);
   background: var(--soft);
@@ -1263,6 +1294,11 @@ body.focus-mode .layout{
   height: 36px;
   font-weight: 900;
   cursor: pointer;
+}
+.habitCard__day--month{
+  height: 32px;
+  border-radius: 9px;
+  font-size: 12px;
 }
 .habitCard__day.is-disabled{
   opacity: 0.35;
@@ -1884,6 +1920,18 @@ body.focus-mode .layout{
   #page-habits .habitHeader{
     align-items: stretch;
     gap: 8px;
+  }
+  #page-habits .habitHeader__right{
+    width: 100%;
+    justify-content: space-between;
+  }
+  #page-habits .habitViewToggle{
+    flex: 1;
+    justify-content: center;
+  }
+  #page-habits .habitViewToggle .btn{
+    width: auto;
+    flex: 1;
   }
   #page-habits #habitClearMonth{
     width: 100%;
