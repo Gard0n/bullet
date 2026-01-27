@@ -22,6 +22,8 @@ const el = {
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
   syncStatus: document.getElementById("syncStatus"),
+  syncHistory: document.getElementById("syncHistory"),
+  syncDebug: document.getElementById("syncDebug"),
   authDialog: document.getElementById("authDialog"),
   authForm: document.getElementById("authForm"),
   authEmail: document.getElementById("authEmail"),
@@ -868,6 +870,15 @@ function formatTimeShort(ts) {
   }
 }
 
+function formatTimeDebug(ts) {
+  if (!ts) return "—";
+  try {
+    return new Date(ts).toLocaleString("fr-FR");
+  } catch {
+    return String(ts);
+  }
+}
+
 function setSyncStatus(text, tone) {
   if (!el.syncStatus) return;
   el.syncStatus.textContent = text;
@@ -921,6 +932,26 @@ function renderSyncHistory() {
   });
 }
 
+function renderSyncDebug() {
+  if (!el.syncDebug) return;
+  if (!currentUser) {
+    el.syncDebug.hidden = true;
+    el.syncDebug.innerHTML = "";
+    return;
+  }
+  const id = currentUser.id ? `${currentUser.id.slice(0, 8)}…` : "—";
+  const email = currentUser.email || "—";
+  el.syncDebug.hidden = false;
+  el.syncDebug.innerHTML = [
+    `<div><b>User</b> ${email}</div>`,
+    `<div><b>ID</b> ${id}</div>`,
+    `<div><b>Local</b> ${formatTimeDebug(state.lastLocalChangeAt)}</div>`,
+    `<div><b>Sync</b> ${formatTimeDebug(state.lastSyncAt)}</div>`,
+    `<div><b>Cloud</b> ${formatTimeDebug(state.lastRemoteAt)}</div>`,
+    `<div><b>Mode</b> ${storageMode}</div>`,
+  ].join("");
+}
+
 function pushSyncHistory({ label, status = "ok" }) {
   if (!Array.isArray(state.syncHistory)) state.syncHistory = [];
   state.syncHistory.unshift({
@@ -931,12 +962,15 @@ function pushSyncHistory({ label, status = "ok" }) {
   state.syncHistory = state.syncHistory.slice(0, 12);
   save({ skipSync: true, skipLocalStamp: true });
   renderSyncHistory();
+  renderSyncDebug();
 }
 
 function setAuthUi(isLoggedIn) {
   if (el.btnLogin) el.btnLogin.hidden = isLoggedIn;
   if (el.btnLogout) el.btnLogout.hidden = !isLoggedIn;
   if (el.btnSyncNow) el.btnSyncNow.hidden = !isLoggedIn;
+  if (el.syncDebug) el.syncDebug.hidden = !isLoggedIn;
+  renderSyncDebug();
 }
 
 function askSyncChoice() {
@@ -1503,6 +1537,7 @@ async function signOut() {
   setAuthUi(false);
   setSyncStatus("Déconnecté", "warn");
   renderSyncHistory();
+  renderSyncDebug();
 }
 
 function openAuthDialog() {
@@ -1530,12 +1565,14 @@ function initSupabase() {
       stopRealtimeSync();
       setSyncStatus("Non connecté", "warn");
       renderSyncHistory();
+      renderSyncDebug();
       return;
     }
     const email = currentUser.email ? ` (${currentUser.email})` : "";
     setSyncStatus(`Connecté${email}`, "ok");
     syncOnLogin();
     startRealtimeSync();
+    renderSyncDebug();
   });
 
   supabaseClient.auth.getSession().then(({ data }) => {
@@ -1551,6 +1588,7 @@ function initSupabase() {
       setSyncStatus("Non connecté", "warn");
     }
     renderSyncHistory();
+    renderSyncDebug();
   });
 }
 
@@ -4919,6 +4957,7 @@ function syncAll() {
   renderDashboardToggles();
   applyDashboardPreferences();
   renderSyncHistory();
+  renderSyncDebug();
 }
 
 /* ---------------- INIT ---------------- */
