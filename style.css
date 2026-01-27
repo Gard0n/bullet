@@ -1740,10 +1740,15 @@ body.focus-mode .layout{
   #reviewHabits{ max-height: 200px; }
 
   .habitTable{ border-radius: var(--radius-md); }
-  .hRow, .hHeaderRow{ grid-template-columns: 190px 1fr; min-width: 820px; }
-  .hName{ padding: 8px 10px; }
-  .hCells, .hDays{ min-width: 620px; }
-  .hCell, .hDay{ min-width: 22px; height: 32px; font-size: 12px; }
+  .hRow, .hHeaderRow{ grid-template-columns: 160px 1fr; min-width: 720px; }
+  .hName{ padding: 8px 9px; font-size: 14px; }
+  .hName__main{ gap: 6px; }
+  .hName__top{ gap: 8px; }
+  .hName__meta{ gap: 4px; font-size: 11px; }
+  .habitProgress{ height: 6px; }
+  .habitGoalSelect{ width: 62px; padding: 5px 6px; font-size: 11px; }
+  .hCells, .hDays{ min-width: 520px; }
+  .hCell, .hDay{ min-width: 20px; height: 30px; font-size: 11px; }
   .habitTable{ -webkit-overflow-scrolling: touch; }
   .calendar__grid{ -webkit-overflow-scrolling: touch; }
 
@@ -1849,4 +1854,9 @@ body.focus-mode .layout{
   .modal__card{ padding: 16px; }
   .side{ width: min(90vw, 320px); }
   .toastRoot{ right: 10px; left: 10px; bottom: 92px; }
+
+  .hRow, .hHeaderRow{ grid-template-columns: 140px 1fr; min-width: 660px; }
+  .hName{ padding: 7px 8px; font-size: 13px; }
+  .hCells, .hDays{ min-width: 460px; }
+  .hCell, .hDay{ min-width: 19px; height: 28px; font-size: 10px; }
 }
