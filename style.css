@@ -1699,14 +1699,24 @@ body.focus-mode .layout{
 }
 
 @media (max-width: 860px){
-  .topbar__inner{ flex-direction: column; align-items:stretch; }
+  .topbar__inner{
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 0;
+  }
   .topbar__center{ display:none; }
-  .topbar__actions{ order: 2; width: 100%; justify-content:flex-start; }
+  .topbar__actions{
+    order: 2;
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    gap: 6px;
+  }
   .topbar__left{
     order: 1;
-    width: 100%;
+    width: auto;
     display:grid;
-    grid-template-columns: 36px 1fr 36px;
+    grid-template-columns: 36px 1fr;
     align-items: center;
     gap: 8px;
   }
@@ -1716,15 +1726,7 @@ body.focus-mode .layout{
   }
   .brand__title{ text-align: center; width: 100%; }
   .btn--drawer{ display:inline-flex; align-items:center; justify-content:center; }
-  .tabs{
-    width: 100%;
-    overflow-x: auto;
-    justify-content:flex-start;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-  .tabs::-webkit-scrollbar{ display:none; }
-  .tab{ white-space: nowrap; scroll-snap-align: start; }
+  .tabs{ display:none; }
   .menu__panel{
     position: fixed;
     right: 16px;
