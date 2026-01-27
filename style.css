@@ -85,7 +85,7 @@ body{
   padding: 16px 0;
 }
 
-.topbar__left{ display:flex; align-items:center; gap: 16px; flex: 1; min-width: 0; }
+.topbar__left{ display:flex; align-items:center; gap: 16px; }
 .topbar__center{ flex:1; display:flex; justify-content:center; }
 .topbar__actions{
   display:flex;
@@ -1720,6 +1720,8 @@ body.focus-mode .layout{
     grid-template-columns: 36px 1fr;
     align-items: center;
     gap: 8px;
+    flex: 1;
+    min-width: 0;
   }
   .brand{
     flex: 1;
@@ -1745,6 +1747,8 @@ body.focus-mode .layout{
     bottom: 0;
     left: 0;
     width: min(84vw, 320px);
+    height: 100dvh;
+    max-height: 100dvh;
     z-index: 30;
     transform: translateX(-110%);
     transition: transform 0.25s ease;
