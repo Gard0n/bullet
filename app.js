@@ -1240,12 +1240,7 @@ async function fetchRemoteUpdatedAt() {
     .maybeSingle();
   if (error || !data?.updated_at) return 0;
   const remoteAt = Date.parse(data.updated_at);
-  if (Number.isFinite(remoteAt) && remoteAt > 0) {
-    state.lastRemoteAt = remoteAt;
-    save({ skipSync: true, skipLocalStamp: true });
-    return remoteAt;
-  }
-  return 0;
+  return Number.isFinite(remoteAt) && remoteAt > 0 ? remoteAt : 0;
 }
 
 async function pullRemoteState(source = "manuel") {
