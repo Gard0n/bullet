@@ -1229,6 +1229,21 @@ body.focus-mode .layout{
   border: 1px solid var(--border);
   background: var(--soft);
 }
+.miniBadge--green{
+  color: var(--mood-green);
+  border-color: color-mix(in srgb, var(--mood-green) 35%, var(--border));
+  background: color-mix(in srgb, var(--mood-green) 12%, var(--soft));
+}
+.miniBadge--yellow{
+  color: var(--mood-yellow);
+  border-color: color-mix(in srgb, var(--mood-yellow) 35%, var(--border));
+  background: color-mix(in srgb, var(--mood-yellow) 12%, var(--soft));
+}
+.miniBadge--red{
+  color: var(--mood-red);
+  border-color: color-mix(in srgb, var(--mood-red) 35%, var(--border));
+  background: color-mix(in srgb, var(--mood-red) 12%, var(--soft));
+}
 .dayMood{
   width: 10px;
   height: 10px;
@@ -1287,6 +1302,8 @@ body.focus-mode .layout{
   align-items:center;
   background: var(--card);
   cursor: pointer;
+  color: var(--text);
+  text-align: left;
 }
 .mobileCard__left{
   display:grid;
@@ -1305,6 +1322,27 @@ body.focus-mode .layout{
 .mobileCard__dot{
   width: 8px;
   height: 8px;
+}
+.yearMobileSummary{
+  display:grid;
+  gap: 8px;
+  margin-top: var(--space-2);
+}
+.yearMobileSummary__card{
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  display:grid;
+  gap: 8px;
+  background: color-mix(in srgb, var(--card) 92%, var(--soft));
+}
+.yearMobileSummary__title{
+  font-weight: 950;
+}
+.yearMobileSummary__meta{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .habitCard{
   border: 1px solid var(--border);

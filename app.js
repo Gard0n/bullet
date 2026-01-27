@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.19";
+const APP_VERSION = "2.20";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -203,6 +203,7 @@ const el = {
   yearTitle: document.getElementById("yearTitle"),
   yearGrid: document.getElementById("yearGrid"),
   yearMobileCards: document.getElementById("yearMobileCards"),
+  yearMobileSummary: document.getElementById("yearMobileSummary"),
 };
 
 const DASH_WIDGETS = [
@@ -2868,6 +2869,13 @@ function miniBadge(text) {
   return b;
 }
 
+function miniBadgeColored(text, tone) {
+  const b = document.createElement("span");
+  b.className = `miniBadge miniBadge--${tone}`;
+  b.textContent = text;
+  return b;
+}
+
 /* ---------------- Habits ---------------- */
 
 function monthChecks(monthKey) {
@@ -5199,6 +5207,7 @@ function renderYear() {
   el.yearTitle.textContent = String(state.yearCursor);
   const isMobile = window.matchMedia("(max-width: 980px)").matches;
   if (el.yearMobileCards) el.yearMobileCards.hidden = !isMobile;
+  if (el.yearMobileSummary) el.yearMobileSummary.hidden = !isMobile;
   if (el.yearGrid) el.yearGrid.hidden = isMobile;
   if (isMobile) {
     renderYearMobile();
@@ -5252,6 +5261,10 @@ function renderYear() {
 function renderYearMobile() {
   if (!el.yearMobileCards) return;
   el.yearMobileCards.innerHTML = "";
+  if (el.yearMobileSummary) el.yearMobileSummary.innerHTML = "";
+  let totalGreen = 0;
+  let totalYellow = 0;
+  let totalRed = 0;
   for (let month = 1; month <= 12; month++) {
     const mk = `${state.yearCursor}-${String(month).padStart(2, "0")}`;
     const dim = daysInMonth(mk);
@@ -5262,6 +5275,9 @@ function renderYearMobile() {
       if (mood === "yellow") yellow++;
       if (mood === "red") red++;
     }
+    totalGreen += green;
+    totalYellow += yellow;
+    totalRed += red;
 
     const card = document.createElement("button");
     card.type = "button";
@@ -5278,14 +5294,28 @@ function renderYearMobile() {
 
     const right = document.createElement("div");
     right.className = "mobileCard__meta";
-    if (green) right.appendChild(miniBadge(`Vert ${green}`));
-    if (yellow) right.appendChild(miniBadge(`Jaune ${yellow}`));
-    if (red) right.appendChild(miniBadge(`Rouge ${red}`));
+    if (green) right.appendChild(miniBadgeColored(`Vert ${green}`, "green"));
+    if (yellow) right.appendChild(miniBadgeColored(`Jaune ${yellow}`, "yellow"));
+    if (red) right.appendChild(miniBadgeColored(`Rouge ${red}`, "red"));
     if (!green && !yellow && !red) right.appendChild(miniBadge("—"));
 
     card.appendChild(left);
     card.appendChild(right);
     el.yearMobileCards.appendChild(card);
+  }
+
+  if (el.yearMobileSummary) {
+    const summary = document.createElement("div");
+    summary.className = "yearMobileSummary__card";
+    summary.innerHTML = `
+      <div class="yearMobileSummary__title">Bilan annuel</div>
+      <div class="yearMobileSummary__meta">
+        <span class="miniBadge miniBadge--green">Vert ${totalGreen}</span>
+        <span class="miniBadge miniBadge--yellow">Jaune ${totalYellow}</span>
+        <span class="miniBadge miniBadge--red">Rouge ${totalRed}</span>
+      </div>
+    `;
+    el.yearMobileSummary.appendChild(summary);
   }
 }
 
