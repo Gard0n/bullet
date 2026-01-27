@@ -1299,10 +1299,21 @@ async function pushState(reason = "manual", opts = {}) {
 
   const lastSync = typeof state.lastSyncAt === "number" ? state.lastSyncAt : 0;
   const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
+  const prevRemoteAt = state.lastRemoteAt || 0;
   let remoteChanged = false;
+  let remoteAt = 0;
   if (!force) {
-    const remoteAt = await fetchRemoteUpdatedAt();
-    remoteChanged = remoteAt > lastSync;
+    remoteAt = await fetchRemoteUpdatedAt();
+    remoteChanged = remoteAt > prevRemoteAt;
+    if (remoteChanged) {
+      state.lastRemoteAt = remoteAt;
+      save({ skipSync: true, skipLocalStamp: true });
+    }
+  }
+  if (!force && remoteChanged && !localChanged) {
+    isSyncing = false;
+    await pullRemoteState("remote");
+    return;
   }
   if (!force && localChanged && remoteChanged) {
     isSyncing = false;
