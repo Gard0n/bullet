@@ -24,7 +24,10 @@ const el = {
   btnForceRefresh: document.getElementById("btnForceRefresh"),
   syncStatus: document.getElementById("syncStatus"),
   syncHistory: document.getElementById("syncHistory"),
+  syncCloudMeta: document.getElementById("syncCloudMeta"),
   syncDebug: document.getElementById("syncDebug"),
+  btnSnapshot: document.getElementById("btnSnapshot"),
+  btnRestoreSnapshot: document.getElementById("btnRestoreSnapshot"),
   authDialog: document.getElementById("authDialog"),
   authForm: document.getElementById("authForm"),
   authEmail: document.getElementById("authEmail"),
@@ -231,6 +234,7 @@ let state = {
   lastSyncAt: 0,
   lastRemoteAt: 0,
   syncHistory: [],
+  localSnapshots: [],
   onboardingSeen: false,
 
   entries: [],
@@ -811,6 +815,15 @@ async function load() {
     state.lastSyncAt = typeof p.lastSyncAt === "number" ? p.lastSyncAt : 0;
     state.lastRemoteAt = typeof p.lastRemoteAt === "number" ? p.lastRemoteAt : 0;
     state.syncHistory = Array.isArray(p.syncHistory) ? p.syncHistory.slice(0, 12) : [];
+    state.localSnapshots = Array.isArray(p.localSnapshots)
+      ? p.localSnapshots
+          .map(s => ({
+            ts: typeof s?.ts === "number" ? s.ts : 0,
+            state: isPlainObject(s?.state) ? s.state : null,
+          }))
+          .filter(s => s.ts && s.state)
+          .slice(0, 3)
+      : [];
     state.onboardingSeen = p.onboardingSeen === true;
 
     state.entries = Array.isArray(p.entries) ? p.entries.map(sanitizeEntry).filter(Boolean) : [];
@@ -936,6 +949,17 @@ function renderSyncHistory() {
   });
 }
 
+function renderCloudMeta() {
+  if (!el.syncCloudMeta) return;
+  if (!currentUser) {
+    el.syncCloudMeta.hidden = true;
+    el.syncCloudMeta.innerHTML = "";
+    return;
+  }
+  el.syncCloudMeta.hidden = false;
+  el.syncCloudMeta.innerHTML = `<div><b>Cloud maj</b> ${formatTimeDebug(state.lastRemoteAt)}</div>`;
+}
+
 function renderSyncDebug() {
   if (!el.syncDebug) return;
   if (!currentUser) {
@@ -956,6 +980,38 @@ function renderSyncDebug() {
   ].join("");
 }
 
+function createLocalSnapshot() {
+  const snap = { ts: Date.now(), state: snapshotForSync() };
+  if (!Array.isArray(state.localSnapshots)) state.localSnapshots = [];
+  state.localSnapshots.unshift(snap);
+  state.localSnapshots = state.localSnapshots.slice(0, 3);
+  save({ skipSync: true });
+  renderSyncDebug();
+  renderCloudMeta();
+  showToast("Snapshot local sauvegarde", "ok");
+}
+
+function restoreLocalSnapshot() {
+  const snap = Array.isArray(state.localSnapshots) ? state.localSnapshots[0] : null;
+  if (!snap?.state) {
+    showToast("Aucun snapshot local", "warn");
+    return;
+  }
+  const ok = confirm(`Restaurer le snapshot local du ${formatTimeDebug(snap.ts)} ?`);
+  if (!ok) return;
+  const prevSyncAt = state.lastSyncAt;
+  const prevRemoteAt = state.lastRemoteAt;
+  suppressSync = true;
+  importJson(JSON.stringify({ app: APP_ID, v: STORAGE_VERSION, ...snap.state }), { confirm: false });
+  suppressSync = false;
+  state.lastSyncAt = prevSyncAt;
+  state.lastRemoteAt = prevRemoteAt;
+  state.lastLocalChangeAt = Date.now();
+  save({ skipLocalStamp: true });
+  syncAll();
+  showToast("Snapshot local restaure", "ok");
+}
+
 function pushSyncHistory({ label, status = "ok" }) {
   if (!Array.isArray(state.syncHistory)) state.syncHistory = [];
   state.syncHistory.unshift({
@@ -967,6 +1023,7 @@ function pushSyncHistory({ label, status = "ok" }) {
   save({ skipSync: true, skipLocalStamp: true });
   renderSyncHistory();
   renderSyncDebug();
+  renderCloudMeta();
 }
 
 function setAuthUi(isLoggedIn) {
@@ -974,8 +1031,12 @@ function setAuthUi(isLoggedIn) {
   if (el.btnLogout) el.btnLogout.hidden = !isLoggedIn;
   if (el.btnSyncNow) el.btnSyncNow.hidden = !isLoggedIn;
   if (el.btnForceRefresh) el.btnForceRefresh.hidden = !isLoggedIn;
+  if (el.btnSnapshot) el.btnSnapshot.hidden = !isLoggedIn;
+  if (el.btnRestoreSnapshot) el.btnRestoreSnapshot.hidden = !isLoggedIn;
+  if (el.syncCloudMeta) el.syncCloudMeta.hidden = !isLoggedIn;
   if (el.syncDebug) el.syncDebug.hidden = !isLoggedIn;
   renderSyncDebug();
+  renderCloudMeta();
 }
 
 function askSyncChoice() {
@@ -1115,6 +1176,7 @@ function applyDemoData() {
     lastSyncAt: 0,
     lastRemoteAt: 0,
     syncHistory: [],
+    localSnapshots: [],
     onboardingSeen: true,
     entries: [
       {
@@ -1581,6 +1643,11 @@ async function forceRefreshApp() {
     // ignore
   }
   window.location.reload();
+}
+
+async function syncNowSmart() {
+  await checkRemoteFreshness("manuel");
+  await pushState("manual");
 }
 
 function initSupabase() {
@@ -5024,6 +5091,7 @@ function importJson(text, opts = {}) {
   state.lastSyncAt = typeof parsed.lastSyncAt === "number" ? parsed.lastSyncAt : 0;
   state.lastRemoteAt = typeof parsed.lastRemoteAt === "number" ? parsed.lastRemoteAt : 0;
   state.syncHistory = Array.isArray(parsed.syncHistory) ? parsed.syncHistory.slice(0, 12) : [];
+  state.localSnapshots = [];
   state.onboardingSeen = parsed.onboardingSeen === true;
 
   state.entries = Array.isArray(parsed.entries) ? parsed.entries.map(sanitizeEntry).filter(Boolean) : [];
@@ -5086,6 +5154,7 @@ function resetAll() {
     lastSyncAt: 0,
     lastRemoteAt: 0,
     syncHistory: [],
+    localSnapshots: [],
     onboardingSeen: false,
     entries: [],
     templates: [],
@@ -5124,6 +5193,7 @@ function syncAll() {
   applyDashboardPreferences();
   renderSyncHistory();
   renderSyncDebug();
+  renderCloudMeta();
 }
 
 /* ---------------- INIT ---------------- */
@@ -5157,8 +5227,10 @@ async function init() {
   el.authSignIn?.addEventListener("click", signInWithEmail);
   el.authSignUp?.addEventListener("click", signUpWithEmail);
   el.btnLogout?.addEventListener("click", signOut);
-  el.btnSyncNow?.addEventListener("click", () => pushState("manual"));
+  el.btnSyncNow?.addEventListener("click", syncNowSmart);
   el.btnForceRefresh?.addEventListener("click", forceRefreshApp);
+  el.btnSnapshot?.addEventListener("click", createLocalSnapshot);
+  el.btnRestoreSnapshot?.addEventListener("click", restoreLocalSnapshot);
   el.btnOnboarding?.addEventListener("click", openOnboarding);
   el.onboardingClose?.addEventListener("click", () => el.onboardingDialog?.close());
   el.onboardingStart?.addEventListener("click", finishOnboarding);
