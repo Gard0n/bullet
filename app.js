@@ -21,6 +21,7 @@ const el = {
   btnLogin: document.getElementById("btnLogin"),
   btnLogout: document.getElementById("btnLogout"),
   btnSyncNow: document.getElementById("btnSyncNow"),
+  btnForceRefresh: document.getElementById("btnForceRefresh"),
   syncStatus: document.getElementById("syncStatus"),
   syncHistory: document.getElementById("syncHistory"),
   syncDebug: document.getElementById("syncDebug"),
@@ -972,6 +973,7 @@ function setAuthUi(isLoggedIn) {
   if (el.btnLogin) el.btnLogin.hidden = isLoggedIn;
   if (el.btnLogout) el.btnLogout.hidden = !isLoggedIn;
   if (el.btnSyncNow) el.btnSyncNow.hidden = !isLoggedIn;
+  if (el.btnForceRefresh) el.btnForceRefresh.hidden = !isLoggedIn;
   if (el.syncDebug) el.syncDebug.hidden = !isLoggedIn;
   renderSyncDebug();
 }
@@ -1563,6 +1565,22 @@ function openAuthDialog() {
   }
   if (el.authError) el.authError.textContent = "";
   el.authDialog?.showModal();
+}
+
+async function forceRefreshApp() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch {
+    // ignore
+  }
+  window.location.reload();
 }
 
 function initSupabase() {
@@ -5140,6 +5158,7 @@ async function init() {
   el.authSignUp?.addEventListener("click", signUpWithEmail);
   el.btnLogout?.addEventListener("click", signOut);
   el.btnSyncNow?.addEventListener("click", () => pushState("manual"));
+  el.btnForceRefresh?.addEventListener("click", forceRefreshApp);
   el.btnOnboarding?.addEventListener("click", openOnboarding);
   el.onboardingClose?.addEventListener("click", () => el.onboardingDialog?.close());
   el.onboardingStart?.addEventListener("click", finishOnboarding);
