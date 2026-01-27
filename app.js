@@ -5169,6 +5169,7 @@ async function init() {
 
   window.addEventListener("resize", () => {
     if (window.innerWidth > 860) closeDrawer();
+    if (state.route === "habits") renderHabits();
   });
 
   window.addEventListener("focus", () => {
