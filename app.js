@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.23";
+const APP_VERSION = "2.24";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -287,7 +287,9 @@ let pendingSyncChoice = null;
 let pendingConflictChoice = null;
 let suppressSync = false;
 const REALTIME_POLL_MS = 15000;
+const BACKGROUND_POLL_MS = 60000;
 let lastFreshCheckAt = 0;
+let lastBackgroundPollAt = 0;
 const AUTO_PUSH_MIN_MS = 12000;
 let lastAutoPushAt = 0;
 let autoPushTimer = null;
@@ -988,6 +990,7 @@ function renderCloudMeta() {
     `<div><b>Derniere sync</b> ${formatTimeDebug(state.lastSyncAt)}</div>`,
     localPending ? `<div><b>Etat</b> Local en attente</div>` : "",
     cloudAhead ? `<div><b>Etat</b> Cloud plus recent</div>` : "",
+    cloudAhead ? `<button class="btn btn--ghost btn--sm" data-action="pull-cloud">Charger cloud</button>` : "",
   ].filter(Boolean).join("");
 }
 
@@ -1512,7 +1515,14 @@ function startPollSync() {
   if (!supabaseClient || !currentUser) return;
   if (realtimePollTimer) window.clearInterval(realtimePollTimer);
   realtimePollTimer = window.setInterval(async () => {
-    if (!supabaseClient || !currentUser || document.hidden) return;
+    if (!supabaseClient || !currentUser) return;
+    if (document.hidden) {
+      const now = Date.now();
+      if (now - lastBackgroundPollAt < BACKGROUND_POLL_MS) return;
+      lastBackgroundPollAt = now;
+      await checkRemoteFreshness("poll-bg");
+      return;
+    }
     await checkRemoteFreshness("poll");
   }, REALTIME_POLL_MS);
 }
@@ -5529,6 +5539,11 @@ async function init() {
   el.btnRestoreSnapshot?.addEventListener("click", restoreLocalSnapshot);
   el.btnPullCloud?.addEventListener("click", pullCloudNow);
   el.btnPushLocal?.addEventListener("click", pushLocalNow);
+  el.syncCloudMeta?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action='pull-cloud']");
+    if (!btn) return;
+    pullCloudNow();
+  });
   el.btnOnboarding?.addEventListener("click", openOnboarding);
   el.onboardingClose?.addEventListener("click", () => el.onboardingDialog?.close());
   el.onboardingStart?.addEventListener("click", finishOnboarding);
