@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.21";
+const APP_VERSION = "2.22";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -290,6 +290,7 @@ const REALTIME_POLL_MS = 25000;
 let lastFreshCheckAt = 0;
 const AUTO_PUSH_MIN_MS = 12000;
 let lastAutoPushAt = 0;
+let autoPushTimer = null;
 
 /* ---------------- Utils ---------------- */
 
@@ -1458,10 +1459,15 @@ async function pushState(reason = "manual", opts = {}) {
 function queueSync() {
   if (!supabaseClient || !currentUser) return;
   clearTimeout(syncTimer);
+  if (autoPushTimer) clearTimeout(autoPushTimer);
   syncTimer = setTimeout(() => {
     if (Date.now() - lastAutoPushAt < AUTO_PUSH_MIN_MS) return;
     pushState("auto");
   }, 1200);
+  autoPushTimer = setTimeout(() => {
+    if (Date.now() - lastAutoPushAt < AUTO_PUSH_MIN_MS) return;
+    pushState("auto");
+  }, 5000);
 }
 
 function stopRealtimeSync() {
