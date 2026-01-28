@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.20";
+const APP_VERSION = "2.21";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -1714,13 +1714,17 @@ function initSupabase() {
       setSyncStatus("Non connecté", "warn");
       renderSyncHistory();
       renderSyncDebug();
+      renderCloudMeta();
       return;
     }
     const email = currentUser.email ? ` (${currentUser.email})` : "";
     setSyncStatus(`Connecté${email}`, "ok");
     syncOnLogin();
     startRealtimeSync();
+    // Auto sync at load/login to avoid stale data
+    setTimeout(() => checkRemoteFreshness("boot"), 600);
     renderSyncDebug();
+    renderCloudMeta();
   });
 
   supabaseClient.auth.getSession().then(({ data }) => {
@@ -1731,12 +1735,15 @@ function initSupabase() {
       setSyncStatus(`Connecté${email}`, "ok");
       syncOnLogin();
       startRealtimeSync();
+      // Auto sync at load to avoid stale data
+      setTimeout(() => checkRemoteFreshness("boot"), 600);
     } else {
       stopRealtimeSync();
       setSyncStatus("Non connecté", "warn");
     }
     renderSyncHistory();
     renderSyncDebug();
+    renderCloudMeta();
   });
 }
 
