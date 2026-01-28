@@ -1,6 +1,6 @@
 const APP_ID = "bujo_v3_mood_year";
 const STORAGE_VERSION = 3;
-const APP_VERSION = "2.22";
+const APP_VERSION = "2.23";
 const STORAGE_KEY = APP_ID;
 const { safeSetItem } = window.SharedUtils;
 const SUPABASE_URL = "https://dbskhbnkihvgpcrrxvtq.supabase.co";
@@ -286,7 +286,7 @@ let syncPromptedForUserId = "";
 let pendingSyncChoice = null;
 let pendingConflictChoice = null;
 let suppressSync = false;
-const REALTIME_POLL_MS = 25000;
+const REALTIME_POLL_MS = 15000;
 let lastFreshCheckAt = 0;
 const AUTO_PUSH_MIN_MS = 12000;
 let lastAutoPushAt = 0;
@@ -1435,18 +1435,20 @@ async function pushState(reason = "manual", opts = {}) {
     user_id: currentUser.id,
     state: snapshotForSync(),
     version: STORAGE_VERSION,
-    updated_at: new Date().toISOString(),
   };
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("user_state")
-    .upsert(payload, { onConflict: "user_id" });
+    .upsert(payload, { onConflict: "user_id" })
+    .select("updated_at")
+    .maybeSingle();
   isSyncing = false;
   if (error) {
     setSyncStatus("Erreur sync", "err");
     pushSyncHistory({ label: "Push échouée", status: "err" });
     return;
   }
-  lastSyncAt = Date.now();
+  const serverAt = data?.updated_at ? Date.parse(data.updated_at) : Date.now();
+  lastSyncAt = Number.isFinite(serverAt) && serverAt > 0 ? serverAt : Date.now();
   state.lastSyncAt = lastSyncAt;
   state.lastRemoteAt = lastSyncAt;
   if (reason === "auto") lastAutoPushAt = lastSyncAt;
