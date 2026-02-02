@@ -1344,6 +1344,9 @@ function backupLocalState() {
 }
 
 function applyRemoteState(remoteState, remoteAt) {
+  if (typeof remoteState === "string") {
+    try { remoteState = JSON.parse(remoteState); } catch { return; }
+  }
   if (!remoteState || !isPlainObject(remoteState)) return;
   suppressSync = true;
   const payload = { app: APP_ID, v: STORAGE_VERSION, ...remoteState };
@@ -1369,7 +1372,11 @@ async function fetchRemoteState() {
     state.lastRemoteAt = remoteAt;
     save({ skipSync: true, skipLocalStamp: true });
   }
-  return { state: data.state, updatedAt: remoteAt };
+  let remoteState = data.state;
+  if (typeof remoteState === "string") {
+    try { remoteState = JSON.parse(remoteState); } catch { return null; }
+  }
+  return { state: remoteState, updatedAt: remoteAt };
 }
 
 async function fetchRemoteUpdatedAt() {
@@ -1574,7 +1581,11 @@ async function syncOnLogin() {
     syncBootstrapInFlight = false;
     return;
   }
-  if (!data || !data.state) {
+  let remoteState = data?.state ?? null;
+  if (typeof remoteState === "string") {
+    try { remoteState = JSON.parse(remoteState); } catch { remoteState = null; }
+  }
+  if (!data || !remoteState) {
     await pushState("init");
     syncBootstrapInFlight = false;
     return;
@@ -1596,7 +1607,7 @@ async function syncOnLogin() {
     if (choice === "local") {
       await pushState("replace", { force: true });
     } else {
-      applyRemoteState(data.state, remoteAt);
+      applyRemoteState(remoteState, remoteAt);
       setSyncStatus("Cloud chargé", "ok");
       pushSyncHistory({ label: "Pull login", status: "ok" });
     }
