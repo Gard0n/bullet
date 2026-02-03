@@ -43,6 +43,8 @@ const el = {
   syncChoiceDialog: document.getElementById("syncChoiceDialog"),
   syncChoiceLocal: document.getElementById("syncChoiceLocal"),
   syncChoiceCloud: document.getElementById("syncChoiceCloud"),
+  syncChoiceMeta: document.getElementById("syncChoiceMeta"),
+  syncChoiceWarning: document.getElementById("syncChoiceWarning"),
   syncConflictDialog: document.getElementById("syncConflictDialog"),
   syncConflictLocal: document.getElementById("syncConflictLocal"),
   syncConflictCloud: document.getElementById("syncConflictCloud"),
@@ -1075,11 +1077,41 @@ function setAuthUi(isLoggedIn) {
   renderCloudMeta();
 }
 
-function askSyncChoice() {
+function formatDateFull(ts) {
+  if (!ts) return "inconnue";
+  try {
+    return new Date(ts).toLocaleString("fr-FR", {
+      day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  } catch { return "inconnue"; }
+}
+
+function askSyncChoice({ localAt = 0, cloudAt = 0 } = {}) {
   if (!el.syncChoiceDialog || !el.syncChoiceLocal || !el.syncChoiceCloud) {
     return Promise.resolve("cloud");
   }
   if (pendingSyncChoice) return pendingSyncChoice;
+
+  // Afficher les timestamps
+  if (el.syncChoiceMeta) {
+    el.syncChoiceMeta.innerHTML = `
+      <div><strong>Local :</strong> ${formatDateFull(localAt)}</div>
+      <div><strong>Cloud :</strong> ${formatDateFull(cloudAt)}</div>
+    `;
+  }
+
+  // Avertissement si local plus récent
+  const localIsNewer = localAt > cloudAt && localAt > 0;
+  if (el.syncChoiceWarning) {
+    if (localIsNewer) {
+      el.syncChoiceWarning.textContent = "⚠️ Attention : tes données locales sont plus récentes que le cloud. Charger le cloud écrasera tes modifications récentes !";
+      el.syncChoiceWarning.hidden = false;
+    } else {
+      el.syncChoiceWarning.hidden = true;
+    }
+  }
+
   pendingSyncChoice = new Promise((resolve) => {
     const dialog = el.syncChoiceDialog;
     const cleanup = () => {
@@ -1348,6 +1380,7 @@ function applyRemoteState(remoteState, remoteAt) {
     try { remoteState = JSON.parse(remoteState); } catch { return; }
   }
   if (!remoteState || !isPlainObject(remoteState)) return;
+  backupLocalState(); // Toujours backup avant d'écraser
   suppressSync = true;
   const payload = { app: APP_ID, v: STORAGE_VERSION, ...remoteState };
   importJson(JSON.stringify(payload), { confirm: false });
@@ -1602,7 +1635,8 @@ async function syncOnLogin() {
 
   if (!lastSync) {
     syncPromptedForUserId = currentUser.id;
-    const choice = await askSyncChoice();
+    const localAt = state.lastLocalChangeAt || 0;
+    const choice = await askSyncChoice({ localAt, cloudAt: remoteAt });
     backupLocalState();
     if (choice === "local") {
       await pushState("replace", { force: true });
