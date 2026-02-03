@@ -1367,6 +1367,96 @@ function snapshotForSync() {
   };
 }
 
+// Merge arrays by ID, keeping the most recent (by createdAt) when duplicates
+function mergeArraysById(localArr, remoteArr, sanitizeFn) {
+  const map = new Map();
+  for (const item of localArr) {
+    if (item?.id) map.set(item.id, item);
+  }
+  for (const item of remoteArr) {
+    if (!item?.id) continue;
+    const existing = map.get(item.id);
+    if (!existing) {
+      map.set(item.id, item);
+    } else {
+      // Keep the one with the most recent createdAt
+      const existingAt = existing.createdAt || 0;
+      const itemAt = item.createdAt || 0;
+      if (itemAt > existingAt) {
+        map.set(item.id, item);
+      }
+    }
+  }
+  return Array.from(map.values()).map(sanitizeFn).filter(Boolean);
+}
+
+// Merge objects by key (for habitChecks, moods, top3ByDate, etc.)
+function mergeObjectsByKey(localObj, remoteObj) {
+  const result = { ...localObj };
+  for (const key of Object.keys(remoteObj)) {
+    if (!(key in result)) {
+      result[key] = remoteObj[key];
+    }
+    // If both have the key, keep local (user's recent actions)
+  }
+  return result;
+}
+
+// Merge nested objects like projectMilestones, collectionItems
+function mergeNestedArrays(localObj, remoteObj, sanitizeFn) {
+  const allKeys = new Set([...Object.keys(localObj || {}), ...Object.keys(remoteObj || {})]);
+  const result = {};
+  for (const key of allKeys) {
+    const localArr = Array.isArray(localObj?.[key]) ? localObj[key] : [];
+    const remoteArr = Array.isArray(remoteObj?.[key]) ? remoteObj[key] : [];
+    result[key] = mergeArraysById(localArr, remoteArr, sanitizeFn);
+  }
+  return result;
+}
+
+// Merge local state with remote state intelligently
+function mergeStates(localSnapshot, remoteState, localAt, remoteAt) {
+  if (!remoteState || !isPlainObject(remoteState)) return localSnapshot;
+
+  const merged = {};
+
+  // Preferences: take from the most recent global change
+  const prefsFromRemote = remoteAt > localAt;
+  merged.theme = prefsFromRemote ? (remoteState.theme || localSnapshot.theme) : localSnapshot.theme;
+  merged.daysView = prefsFromRemote ? (remoteState.daysView || localSnapshot.daysView) : localSnapshot.daysView;
+  merged.dailyFilter = prefsFromRemote ? (remoteState.dailyFilter || localSnapshot.dailyFilter) : localSnapshot.dailyFilter;
+  merged.selectedDate = localSnapshot.selectedDate; // Always keep local navigation state
+  merged.query = localSnapshot.query;
+  merged.monthCursor = localSnapshot.monthCursor;
+  merged.reviewCursor = localSnapshot.reviewCursor;
+  merged.reviewFlow = prefsFromRemote ? (remoteState.reviewFlow || localSnapshot.reviewFlow) : localSnapshot.reviewFlow;
+  merged.viewPrefs = prefsFromRemote ? (remoteState.viewPrefs || localSnapshot.viewPrefs) : localSnapshot.viewPrefs;
+  merged.habitView = prefsFromRemote ? (remoteState.habitView || localSnapshot.habitView) : localSnapshot.habitView;
+  merged.yearCursor = localSnapshot.yearCursor;
+
+  // Data arrays: merge by ID
+  merged.entries = mergeArraysById(localSnapshot.entries || [], remoteState.entries || [], sanitizeEntry);
+  merged.templates = mergeArraysById(localSnapshot.templates || [], remoteState.templates || [], sanitizeTemplate);
+  merged.habits = mergeArraysById(localSnapshot.habits || [], remoteState.habits || [], sanitizeHabit);
+  merged.projects = mergeArraysById(localSnapshot.projects || [], remoteState.projects || [], sanitizeProject);
+  merged.collections = mergeArraysById(localSnapshot.collections || [], remoteState.collections || [], sanitizeCollection);
+
+  // Keep active IDs from local
+  merged.activeProjectId = localSnapshot.activeProjectId;
+  merged.activeCollectionId = localSnapshot.activeCollectionId;
+
+  // Nested arrays: merge by parent key then by item ID
+  merged.projectMilestones = mergeNestedArrays(localSnapshot.projectMilestones, remoteState.projectMilestones, sanitizeProjectMilestone);
+  merged.collectionItems = mergeNestedArrays(localSnapshot.collectionItems, remoteState.collectionItems, sanitizeCollectionItem);
+
+  // Key-value objects: merge by key
+  merged.habitChecks = mergeObjectsByKey(localSnapshot.habitChecks || {}, remoteState.habitChecks || {});
+  merged.moods = mergeObjectsByKey(localSnapshot.moods || {}, remoteState.moods || {});
+  merged.top3ByDate = mergeObjectsByKey(localSnapshot.top3ByDate || {}, remoteState.top3ByDate || {});
+
+  return merged;
+}
+
 function backupLocalState() {
   try {
     localStorage.setItem(SYNC_BACKUP_KEY, JSON.stringify({ app: APP_ID, v: STORAGE_VERSION, ...snapshotForSync() }));
@@ -1383,6 +1473,19 @@ function applyRemoteState(remoteState, remoteAt) {
   backupLocalState(); // Toujours backup avant d'écraser
   suppressSync = true;
   const payload = { app: APP_ID, v: STORAGE_VERSION, ...remoteState };
+  importJson(JSON.stringify(payload), { confirm: false });
+  suppressSync = false;
+  const stamp = Number.isFinite(remoteAt) ? remoteAt : Date.now();
+  state.lastSyncAt = stamp;
+  state.lastRemoteAt = stamp;
+  save({ skipSync: true, skipLocalStamp: true });
+}
+
+function applyMergedState(mergedState, remoteAt) {
+  if (!mergedState || !isPlainObject(mergedState)) return;
+  backupLocalState();
+  suppressSync = true;
+  const payload = { app: APP_ID, v: STORAGE_VERSION, ...mergedState };
   importJson(JSON.stringify(payload), { confirm: false });
   suppressSync = false;
   const stamp = Number.isFinite(remoteAt) ? remoteAt : Date.now();
@@ -1633,14 +1736,36 @@ async function syncOnLogin() {
   const localChanged = (state.lastLocalChangeAt || 0) > lastSync;
   const remoteChanged = remoteAt > lastSync;
 
+  const localAt = state.lastLocalChangeAt || 0;
+  const hasLocalData = hasUserData();
+  const hasRemoteData = Boolean(
+    remoteState.entries?.length ||
+    remoteState.habits?.length ||
+    remoteState.projects?.length ||
+    remoteState.collections?.length
+  );
+
+  // Case 1: No previous sync - merge if both have data, otherwise take whichever has data
   if (!lastSync) {
     syncPromptedForUserId = currentUser.id;
-    const localAt = state.lastLocalChangeAt || 0;
-    const choice = await askSyncChoice({ localAt, cloudAt: remoteAt });
     backupLocalState();
-    if (choice === "local") {
-      await pushState("replace", { force: true });
+
+    if (hasLocalData && hasRemoteData) {
+      // Both have data - merge intelligently
+      const localSnapshot = snapshotForSync();
+      const merged = mergeStates(localSnapshot, remoteState, localAt, remoteAt);
+      applyMergedState(merged, Math.max(localAt, remoteAt));
+      await pushState("merge", { force: true });
+      setSyncStatus("Données fusionnées", "ok");
+      pushSyncHistory({ label: "Merge auto", status: "ok" });
+      showToast("Données locales et cloud fusionnées", "ok");
+    } else if (hasLocalData && !hasRemoteData) {
+      // Only local has data - push to cloud
+      await pushState("init", { force: true });
+      setSyncStatus("Local envoyé", "ok");
+      pushSyncHistory({ label: "Push init", status: "ok" });
     } else {
+      // Only remote has data (or neither) - pull from cloud
       applyRemoteState(remoteState, remoteAt);
       setSyncStatus("Cloud chargé", "ok");
       pushSyncHistory({ label: "Pull login", status: "ok" });
@@ -1649,29 +1774,36 @@ async function syncOnLogin() {
     return;
   }
 
+  // Case 2: Remote changed, local didn't - just pull
   if (remoteChanged && !localChanged) {
     await pullRemoteState("auto");
     syncBootstrapInFlight = false;
     return;
   }
 
+  // Case 3: Local changed, remote didn't - just push
   if (!remoteChanged && localChanged) {
     await pushState("auto");
     syncBootstrapInFlight = false;
     return;
   }
 
+  // Case 4: Neither changed - nothing to do
   if (!remoteChanged && !localChanged) {
     setSyncStatus(`Sync à jour · ${formatTimeShort(lastSync)}`, "ok");
     syncBootstrapInFlight = false;
     return;
   }
 
-  setSyncStatus("Conflit de sync", "err");
-  pushSyncHistory({ label: "Conflit détecté", status: "warn" });
-  const choice = await askConflictChoice();
-  if (choice === "local") await pushState("override", { force: true });
-  if (choice === "cloud") await pullRemoteState("conflit");
+  // Case 5: Both changed - merge intelligently instead of showing conflict dialog
+  backupLocalState();
+  const localSnapshot = snapshotForSync();
+  const merged = mergeStates(localSnapshot, remoteState, localAt, remoteAt);
+  applyMergedState(merged, Math.max(localAt, remoteAt));
+  await pushState("merge", { force: true });
+  setSyncStatus("Données fusionnées", "ok");
+  pushSyncHistory({ label: "Merge conflit", status: "ok" });
+  showToast("Conflit résolu par fusion", "ok");
   syncBootstrapInFlight = false;
 }
 
